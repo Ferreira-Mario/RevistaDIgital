@@ -2,12 +2,28 @@
 const menuBtn = document.getElementById('menuBtn');
 const closeMenuBtn = document.getElementById('closeMenuBtn');
 const sideMenu = document.getElementById('sideMenu');
-menuBtn.addEventListener('click', () => sideMenu.style.transform = 'translateX(0)');
-closeMenuBtn.addEventListener('click', () => sideMenu.style.transform = 'translateX(100%)');
+const menuBackdrop = document.getElementById('menuBackdrop');
+
+function openMenu() {
+  sideMenu.classList.remove('translate-x-full');
+  sideMenu.classList.add('translate-x-0');
+  menuBackdrop.classList.remove('hidden');
+}
+function closeMenu() {
+  sideMenu.classList.remove('translate-x-0');
+  sideMenu.classList.add('translate-x-full');
+  menuBackdrop.classList.add('hidden');
+}
+
+menuBtn.addEventListener('click', openMenu);
+closeMenuBtn.addEventListener('click', closeMenu);
+menuBackdrop.addEventListener('click', closeMenu);
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+
 sideMenu.querySelectorAll('[data-route]').forEach(btn => {
   btn.addEventListener('click', () => {
     window.location.hash = btn.dataset.route;
-    sideMenu.style.transform = 'translateX(100%)';
+    closeMenu();
   });
 });
 
@@ -224,15 +240,16 @@ const ctx = pdfCanvas.getContext('2d');
 let currentScale = 1; // factor relativo al ajuste a ancho
 let currentUrl = '';
 
+// Visor PDF — controles de zoom y cierre
 document.getElementById('zoomInBtn').addEventListener('click', () => {
   currentScale = Math.min(currentScale + 0.25, 3);
   if (currentUrl) renderFirstPage(currentUrl);
 });
-=document.getElementById('zoomOutBtn').addEventListener('click', () => {
+document.getElementById('zoomOutBtn').addEventListener('click', () => {
   currentScale = Math.max(currentScale - 0.25, 0.5);
   if (currentUrl) renderFirstPage(currentUrl);
 });
-=document.getElementById('closeViewerBtn').addEventListener('click', () => {
+document.getElementById('closeViewerBtn').addEventListener('click', () => {
   viewerModal.classList.add('hidden');
   currentUrl = '';
   try { ctx && ctx.clearRect(0, 0, pdfCanvas.width, pdfCanvas.height); } catch {}
