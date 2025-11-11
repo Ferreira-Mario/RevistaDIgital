@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Revista Digital — HTML estático</title>
+    <meta name="description" content="Revista Digital — prototipo estático con visor PDF y votos">
+    <!-- Tailwind CSS vía CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PDF.js (CDN con versión fija) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+      /* Mejoras menores */
+      .line-clamp-2 { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+      .line-clamp-3 { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+      ::-webkit-scrollbar { width:8px; height:8px; }
+      ::-webkit-scrollbar-thumb { background:#888; border-radius:4px; }
+      ::-webkit-scrollbar-track { background:#f1f1f1; }
+      ::-webkit-scrollbar-thumb:hover { background:#555; }
+    </style>
+  </head>
+  <body class="bg-gray-50 text-gray-900">
+    <!-- Header -->
+    <header class="bg-white shadow-md sticky top-0 z-50">
+      <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+        <h1 class="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+          Revista Digital
+        </h1>
+        <button id="menuBtn" class="p-2 hover:bg-gray-100 rounded-lg transition-colors" aria-label="Menú">
+          <!-- ícono hamburguesa -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Menú lateral -->
+    <aside id="sideMenu" class="fixed top-0 right-0 h-full w-80 bg-white shadow-2xl transform transition-transform duration-300 z-50 translate-x-full">
+      <div class="p-6 space-y-2 overflow-y-auto h-full">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold">Navegación</h2>
+          <button id="closeMenuBtn" class="p-2 hover:bg-gray-100 rounded-lg" aria-label="Cerrar">✕</button>
+        </div>
+        <button data-route="#/" class="w-full text-left px-4 py-3 hover:bg-indigo-50 rounded-lg font-medium">Revista Digital</button>
+        <h3 class="font-semibold text-gray-700 px-4 mt-4">Bocetos</h3>
+        <div class="ml-2">
+          <button data-route="#/bocetos/portada" class="w-full text-left px-6 py-2 hover:bg-gray-100 rounded-lg text-sm">Portada</button>
+          <button data-route="#/bocetos/seccion1" class="w-full text-left px-6 py-2 hover:bg-gray-100 rounded-lg text-sm">1ª Sección</button>
+          <button data-route="#/bocetos/seccion2" class="w-full text-left px-6 py-2 hover:bg-gray-100 rounded-lg text-sm">2ª Sección</button>
+          <button data-route="#/bocetos/seccion3" class="w-full text-left px-6 py-2 hover:bg-gray-100 rounded-lg text-sm">3ª Sección</button>
+          <button data-route="#/bocetos/seccion4" class="w-full text-left px-6 py-2 hover:bg-gray-100 rounded-lg text-sm">4ª Sección</button>
+          <button data-route="#/bocetos/seccion5" class="w-full text-left px-6 py-2 hover:bg-gray-100 rounded-lg text-sm">5ª Sección</button>
+        </div>
+        <button data-route="#/about" class="w-full text-left px-4 py-3 hover:bg-indigo-50 rounded-lg font-medium">Acerca de nosotros</button>
+      </div>
+    </aside>
+
+    <!-- Contenido -->
+    <main class="max-w-6xl mx-auto px-4 py-6">
+      <!-- Home -->
+      <section id="view-home" class="min-h-[60vh]">
+        <div class="text-center py-10">
+          <h2 class="text-4xl font-bold mb-3">Revista Digital</h2>
+          <p class="text-gray-600 max-w-2xl mx-auto">
+            Prototipo HTML estático con visor PDF y votos locales. Edita <code>data/portadas.json</code> y coloca tus PDFs en <code>pdfs/</code>.
+          </p>
+        </div>
+      </section>
+
+      <!-- Bocetos: listado dinámico -->
+      <section id="view-bocetos" class="hidden">
+        <div class="flex items-center justify-between mb-6">
+          <h2 id="sectionTitle" class="text-2xl font-semibold">Bocetos</h2>
+          <div class="text-sm text-gray-500">Fuente: data/portadas.json</div>
+        </div>
+        <div id="coversGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+      </section>
+
+      <!-- Acerca -->
+      <section id="view-about" class="hidden">
+        <div class="bg-white rounded-2xl shadow-xl p-8 space-y-6">
+          <h2 class="text-3xl font-bold">Acerca de Nosotros</h2>
+          <p class="text-gray-700">
+            Revista digital estática para visualizar portadas en PDF y simular votación.
+          </p>
+          <p class="text-gray-600">
+            Para producción con datos en tiempo real y subida de archivos, usa la versión React + Firebase.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <!-- Modal visor PDF -->
+    <div id="viewerModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-[9999]">
+      <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="bg-white w-full h-full max-w-5xl max-h-[90vh] rounded shadow flex flex-col">
+          <div class="flex items-center justify-between p-2 border-b">
+            <span class="font-medium">Visor de PDF</span>
+            <div class="flex gap-2">
+              <button id="zoomInBtn" class="px-3 py-1 rounded hover:bg-gray-100">Zoom +</button>
+              <button id="zoomOutBtn" class="px-3 py-1 rounded hover:bg-gray-100">Zoom −</button>
+              <button id="closeViewerBtn" class="px-3 py-1 rounded hover:bg-gray-100">Cerrar</button>
+            </div>
+          </div>
+          <div class="flex-1 overflow-auto p-2">
+            <canvas id="pdfCanvas" class="mx-auto bg-white"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Popup Info -->
+    <div id="infoPopup" class="fixed bottom-4 right-4 bg-white shadow-lg rounded p-4 border hidden">
+      <div class="flex items-center justify-between mb-2">
+        <span class="font-semibold">Información</span>
+        <button id="closeInfoBtn" class="p-1 rounded hover:bg-gray-100">✕</button>
+      </div>
+      <ul id="infoList" class="text-sm text-gray-700 space-y-1"></ul>
+    </div>
+
+    <script>
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+
+    <!-- Firebase (CDN compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
+    <!-- Config (nuevo archivo, lo creamos abajo) -->
+    <script src="./firebase_config.js"></script>
+
+    <script src="./static_app.js"></script>
+  </body>
+</html>
