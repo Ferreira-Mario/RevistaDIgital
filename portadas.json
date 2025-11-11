@@ -1,0 +1,66 @@
+[
+  {
+    "id": "portada-001",
+    "title": "Descubre las noticias que hay a nuestro alrededor",
+    "author": "Equipo Editorial",
+    "description": "Portada informativa",
+    "section": "portada",
+    "pdfPath": "./pdfs/Portadas/Descubre las noticias que hay a nuestro al rededor.pdf"
+  },
+  {
+    "id": "portada-002",
+    "title": "Portada de revista",
+    "author": "Equipo Editorial",
+    "description": "Portada genérica",
+    "section": "portada",
+    "pdfPath": "./pdfs/Portadas/Portada de revista.pdf"
+  },
+  {
+    "id": "portada-003",
+    "title": "La huella del alce",
+    "author": "Sarai Bolívar",
+    "description": "Edición especial La Huella del Alce",
+    "section": "portada",
+    "pdfPath": "./pdfs/Portadas/HUELLA DEL ALCE.pdf"
+  },
+  {
+    "id": "portada-004",
+    "title": "La huella del alce — versión 2025",
+    "author": "Equipo Editorial",
+    "description": "Edición 2025",
+    "section": "portada",
+    "pdfPath": "./pdfs/Portadas/La huella del alce_20251104_232842_0000.pdf"
+  },
+  {
+    "id": "portada-005",
+    "title": "Cover",
+    "author": "Equipo Creativo",
+    "description": "Propuesta de portada",
+    "section": "portada",
+    "pdfPath": "./pdfs/Portadas/Cover.pdf"
+  },
+  {
+    "id": "portada-006",
+    "title": "Portada — borrador",
+    "author": "Equipo Editorial",
+    "description": "Borrador de portada",
+    "section": "portada",
+    "pdfPath": "./pdfs/Portadas/borrador de portada.pdf"
+  },
+  {
+    "id": "portada-007",
+    "title": "Portada para la revista",
+    "author": "Equipo Editorial",
+    "description": "Propuesta principal",
+    "section": "portada",
+    "pdfPath": "./pdfs/Portadas/portada para la revista.pdf"
+  },
+  {
+    "id": "portada-008",
+    "title": "La huella",
+    "author": "Equipo Editorial",
+    "description": "Variación de portada",
+    "section": "portada",
+    "pdfPath": "./pdfs/Portadas/La huella.pdf"
+  }
+]

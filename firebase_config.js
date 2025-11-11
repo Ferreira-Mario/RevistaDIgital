@@ -1,9 +1,10 @@
-// Sustituye por tu configuración real del Web App de Firebase
 window.firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_PROJECT_ID.firebaseapp.com",
-  projectId: "TU_PROJECT_ID",
-  storageBucket: "TU_PROJECT_ID.appspot.com",
-  messagingSenderId: "TU_SENDER_ID",
-  appId: "TU_APP_ID",
+  apiKey: "AIzaSyBa5FbNU-WOxRlyuky6F-YUX-GwR8v7dq0",
+  authDomain: "revistadigital-3b565.firebaseapp.com",
+  projectId: "revistadigital-3b565",
+  // Usa el bucket clásico; si tienes configuración especial, mantén el que te dio Firebase.
+  storageBucket: "revistadigital-3b565.appspot.com",
+  messagingSenderId: "152935320955",
+  appId: "1:152935320955:web:6cbdbe8d838eb8681541de",
+  measurementId: "G-JHB0TWNH0D"
 };

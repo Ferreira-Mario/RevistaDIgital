@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Conteo de votos por portada: votes/{coverId} -> { count: number }
+    match /votes/{coverId} {
+      // Lectura pública (visualización en tiempo real)
+      allow read: if true;
+
+      // Crear el doc con campo count >= 0 por usuarios autenticados (incl. anónimos)
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasOnly(['count'])
+                    && request.resource.data.count >= 0;
+
+      // Actualizar sólo si el nuevo count es exactamente +1 respecto al actual
+      allow update: if request.auth != null
+                    && request.resource.data.keys().hasOnly(['count'])
+                    && request.resource.data.count == resource.data.count + 1;
+
+      // No permitir delete
+      allow delete: if false;
+    }
+
+    // Registro de voto por usuario (prevención de voto duplicado):
+    // userVotes/{voteId} -> { coverId: string, uid: string, createdAt: timestamp }
+    // Donde voteId = "${coverId}_${uid}"
+    match /userVotes/{voteId} {
+      // Lectura pública opcional (para depurar/estadísticas)
+      allow read: if true;
+
+      // Crear sólo si el usuario está autenticado y aún no existe el doc
+      allow create: if request.auth != null
+                    && !exists(/databases/$(database)/documents/userVotes/$(voteId))
+                    && request.resource.data.keys().hasOnly(['coverId', 'uid', 'createdAt'])
+                    && request.resource.data.uid == request.auth.uid;
+
+      // No se actualiza ni borra
+      allow update, delete: if false;
+    }
+  }
+}
