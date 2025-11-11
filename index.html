@@ -8,7 +8,9 @@
     <!-- Tailwind CSS vía CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PDF.js (CDN con versión fija) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- Elimina estas dos líneas si aún están -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script> -->
+    <!-- <script> pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; </script> -->
     <style>
       /* Mejoras menores */
       .line-clamp-2 { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
@@ -26,7 +28,12 @@
         <h1 class="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
           Revista Digital
         </h1>
-        <button id="menuBtn" class="p-3 hover:bg-gray-100 rounded-lg transition-colors" aria-label="Menú">
+        <button
+          id="menuBtn"
+          class="p-3 hover:bg-gray-100 rounded-lg transition-colors"
+          aria-label="Menú"
+          onclick="(function(){const m=document.getElementById('sideMenu');const b=document.getElementById('menuBackdrop');if(!m||!b)return;m.classList.remove('translate-x-full');m.classList.add('translate-x-0');b.classList.remove('hidden');})()"
+        >
           <svg xmlns="http://www.w3.org/2000/svg" class="w-9 h-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
           </svg>
@@ -39,24 +46,49 @@
       <div class="p-7 space-y-3 overflow-y-auto h-full">
         <div class="flex justify-between items-center mb-4">
           <h2 class="text-2xl font-bold">Navegación</h2>
-          <button id="closeMenuBtn" class="p-2 hover:bg-gray-100 rounded-lg" aria-label="Cerrar">✕</button>
+          <button
+            id="closeMenuBtn"
+            class="p-2 hover:bg-gray-100 rounded-lg"
+            aria-label="Cerrar"
+            onclick="(function(){const m=document.getElementById('sideMenu');const b=document.getElementById('menuBackdrop');if(!m||!b)return;m.classList.remove('translate-x-0');m.classList.add('translate-x-full');b.classList.add('hidden');})()"
+          >✕</button>
         </div>
-        <button data-route="#/" class="w-full text-left px-4 py-3 hover:bg-indigo-50 rounded-lg font-medium text-lg">Revista Digital</button>
+        <button data-route="#/" class="w-full text-left px-4 py-3 hover:bg-indigo-50 rounded-lg font-medium text-lg"
+          onclick="(function(){location.hash='#/';const m=document.getElementById('sideMenu');const b=document.getElementById('menuBackdrop');if(m&&b){m.classList.remove('translate-x-0');m.classList.add('translate-x-full');b.classList.add('hidden');}})()"
+        >Revista Digital</button>
         <h3 class="font-semibold text-gray-700 px-4 mt-4 text-lg">Bocetos</h3>
         <div class="ml-2 space-y-1">
-          <button data-route="#/bocetos/portada" class="w-full text-left px-6 py-3 hover:bg-gray-100 rounded-lg">Portada</button>
-          <button data-route="#/bocetos/seccion1" class="w-full text-left px-6 py-3 hover:bg-gray-100 rounded-lg">1ª Sección</button>
-          <button data-route="#/bocetos/seccion2" class="w-full text-left px-6 py-3 hover:bg-gray-100 rounded-lg">2ª Sección</button>
-          <button data-route="#/bocetos/seccion3" class="w-full text-left px-6 py-3 hover:bg-gray-100 rounded-lg">3ª Sección</button>
-          <button data-route="#/bocetos/seccion4" class="w-full text-left px-6 py-3 hover:bg-gray-100 rounded-lg">4ª Sección</button>
-          <button data-route="#/bocetos/seccion5" class="w-full text-left px-6 py-3 hover:bg-gray-100 rounded-lg">5ª Sección</button>
+          <button data-route="#/bocetos/portada" class="w-full text-left px-6 py-3 hover:bg-gray-100 rounded-lg"
+            onclick="(function(){location.hash='#/bocetos/portada';const m=document.getElementById('sideMenu');const b=document.getElementById('menuBackdrop');if(m&&b){m.classList.remove('translate-x-0');m.classList.add('translate-x-full');b.classList.add('hidden');}})()"
+          >Portada</button>
+          <button data-route="#/bocetos/seccion1" class="w-full text-left px-6 py-3 hover:bg-gray-100 rounded-lg"
+            onclick="(function(){location.hash='#/bocetos/seccion1';const m=document.getElementById('sideMenu');const b=document.getElementById('menuBackdrop');if(m&&b){m.classList.remove('translate-x-0');m.classList.add('translate-x-full');b.classList.add('hidden');}})()"
+          >1ª Sección</button>
+          <button data-route="#/bocetos/seccion2" class="w-full text-left px-6 py-3 hover:bg-gray-100 rounded-lg"
+            onclick="(function(){location.hash='#/bocetos/seccion2';const m=document.getElementById('sideMenu');const b=document.getElementById('menuBackdrop');if(m&&b){m.classList.remove('translate-x-0');m.classList.add('translate-x-full');b.classList.add('hidden');}})()"
+          >2ª Sección</button>
+          <button data-route="#/bocetos/seccion3" class="w-full text-left px-6 py-3 hover:bg-gray-100 rounded-lg"
+            onclick="(function(){location.hash='#/bocetos/seccion3';const m=document.getElementById('sideMenu');const b=document.getElementById('menuBackdrop');if(m&&b){m.classList.remove('translate-x-0');m.classList.add('translate-x-full');b.classList.add('hidden');}})()"
+          >3ª Sección</button>
+          <button data-route="#/bocetos/seccion4" class="w-full text-left px-6 py-3 hover:bg-gray-100 rounded-lg"
+            onclick="(function(){location.hash='#/bocetos/seccion4';const m=document.getElementById('sideMenu');const b=document.getElementById('menuBackdrop');if(m&&b){m.classList.remove('translate-x-0');m.classList.add('translate-x-full');b.classList.add('hidden');}})()"
+          >4ª Sección</button>
+          <button data-route="#/bocetos/seccion5" class="w-full text-left px-6 py-3 hover:bg-gray-100 rounded-lg"
+            onclick="(function(){location.hash='#/bocetos/seccion5';const m=document.getElementById('sideMenu');const b=document.getElementById('menuBackdrop');if(m&&b){m.classList.remove('translate-x-0');m.classList.add('translate-x-full');b.classList.add('hidden');}})()"
+          >5ª Sección</button>
         </div>
-        <button data-route="#/about" class="w-full text-left px-4 py-3 hover:bg-indigo-50 rounded-lg font-medium text-lg">Acerca de nosotros</button>
+        <button data-route="#/about" class="w-full text-left px-4 py-3 hover:bg-indigo-50 rounded-lg font-medium text-lg"
+          onclick="(function(){location.hash='#/about';const m=document.getElementById('sideMenu');const b=document.getElementById('menuBackdrop');if(m&&b){m.classList.remove('translate-x-0');m.classList.add('translate-x-full');b.classList.add('hidden');}})()"
+        >Acerca de nosotros</button>
       </div>
     </aside>
 
     <!-- Fondo para cerrar el menú al hacer clic fuera -->
-    <div id="menuBackdrop" class="hidden fixed inset-0 bg-black/30 z-40"></div>
+    <div
+      id="menuBackdrop"
+      class="hidden fixed inset-0 bg-black/30 z-40"
+      onclick="(function(){const m=document.getElementById('sideMenu');const b=document.getElementById('menuBackdrop');if(!m||!b)return;m.classList.remove('translate-x-0');m.classList.add('translate-x-full');b.classList.add('hidden');})()"
+    ></div>
 
     <!-- Contenido -->
     <main class="max-w-6xl mx-auto px-4 py-6">
@@ -99,19 +131,17 @@
         </div>
       </section>
 
+      <!-- Ajusta el texto guía para reflejar ambas fuentes -->
       <div class="text-center py-10">
         <h2 class="text-4xl font-bold mb-3">Revista Digital</h2>
-        <p class="text-gray-600 max-w-2xl mx-auto">
-          Prototipo HTML estático con visor PDF y votos locales. Edita <code>data/portadas.json</code> y coloca tus PDFs en <code>pdfs/</code>.
-        </p>
+        <!-- Texto de guía retirado para la página final -->
+        <!-- <p class="text-gray-600 max-w-2xl mx-auto">Visor de imágenes con votos...</p> -->
       </div>
-    </section>
-
-      <!-- Bocetos: listado dinámico -->
       <section id="view-bocetos" class="hidden">
         <div class="flex items-center justify-between mb-6">
           <h2 id="sectionTitle" class="text-2xl font-semibold">Bocetos</h2>
-          <div class="text-sm text-gray-500">Fuente: data/portadas.json</div>
+          <!-- Quitar la leyenda de fuente -->
+          <!-- <div class="text-sm text-gray-500">Fuente: data/portadas.json</div> -->
         </div>
         <div id="coversGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
       </section>
@@ -130,12 +160,12 @@
       </section>
     </main>
 
-    <!-- Modal visor PDF -->
+    <!-- Modal visor IMAGEN (mantén solo este modal, sin <canvas>) -->
     <div id="viewerModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-[9999]">
       <div class="absolute inset-0 flex items-center justify-center p-5">
         <div class="bg-white w-full h-full max-w-6xl max-h-[92vh] rounded shadow flex flex-col">
           <div class="flex items-center justify-between p-3 border-b">
-            <span class="font-medium text-lg">Visor de PDF</span>
+            <span id="viewerTitle" class="font-medium text-lg">Imagen</span>
             <div class="flex gap-2">
               <button id="zoomInBtn" class="px-4 py-2 rounded hover:bg-gray-100 text-base">Zoom +</button>
               <button id="zoomOutBtn" class="px-4 py-2 rounded hover:bg-gray-100 text-base">Zoom −</button>
@@ -143,32 +173,28 @@
             </div>
           </div>
           <div class="flex-1 overflow-auto p-3">
-            <canvas id="pdfCanvas" class="mx-auto bg-white"></canvas>
+            <img id="viewerImage" class="mx-auto max-h-[80vh] select-none transition-transform duration-200 ease-out" alt="Vista" />
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Popup Info -->
-    <div id="infoPopup" class="fixed bottom-4 right-4 bg-white shadow-lg rounded p-4 border hidden">
-      <div class="flex items-center justify-between mb-2">
-        <span class="font-semibold">Información</span>
-        <button id="closeInfoBtn" class="p-1 rounded hover:bg-gray-100">✕</button>
+    <!-- Modal Info centrado -->
+    <div id="infoPopup" class="fixed inset-0 hidden z-[9999] grid place-items-center bg-black/40">
+      <div class="bg-white shadow-lg rounded p-4 border max-w-md w-[90%]">
+        <div class="flex items-center justify-between mb-2">
+          <span class="font-medium text-lg">Información</span>
+          <button id="closeInfoBtn" class="p-1 rounded hover:bg-gray-100">✕</button>
+        </div>
+        <ul id="infoList" class="text-sm text-gray-700 space-y-1"></ul>
       </div>
-      <ul id="infoList" class="text-sm text-gray-700 space-y-1"></ul>
     </div>
-
-    <script>
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    </script>
-
-    <!-- Firebase (CDN compat) -->
+    
+    <!-- No debe existir ningún <script> que configure pdfjsLib.GlobalWorkerOptions -->
     <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
-    <!-- Config (nuevo archivo, lo creamos abajo) -->
     <script src="./firebase_config.js"></script>
-
     <script src="./static_app.js"></script>
   </body>
 </html>

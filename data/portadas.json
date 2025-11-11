@@ -1,0 +1,18 @@
+[
+  {
+    "id": "portada-001",
+    "title": "Portada informativa",
+    "author": "Nombre de la persona autora",
+    "description": "",
+    "section": "portada",
+    "imagePath": "./Imagenes/Portadas/img/Portada informativa.png"
+  },
+  {
+    "id": "portada-002",
+    "title": "Portada genérica",
+    "author": "Otra persona autora",
+    "description": "",
+    "section": "portada",
+    "imagePath": "./Imagenes/Portadas/img/Portada genérica.png"
+  }
+]
