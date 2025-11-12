@@ -772,16 +772,21 @@ function makeFileCandidates(fileName) {
     const extsUpper = ['PNG', 'JPG', 'JPEG', 'WEBP'];
     const candidates = [];
 
+    const addWithExt = (b, ext) => {
+        candidates.push(`${b}.${ext}`);
+        candidates.push(`${b}.${String(ext).toUpperCase()}`);
+        // Variante con espacio accidental antes del punto (archivos mal nombrados)
+        candidates.push(`${b} .${ext}`);
+        candidates.push(`${b} .${String(ext).toUpperCase()}`);
+    };
     if (hasExt) {
         const ext = (fileName.split('.').pop() || 'png');
-        for (const bv of basesFinal) {
-            candidates.push(`${bv}.${ext}`, `${bv}.${ext.toUpperCase()}`);
-        }
+        for (const bv of basesFinal) addWithExt(bv, ext);
     } else {
         for (const b of basesFinal) {
-            candidates.push(`${b}.png`, `${b}.PNG`);
-            for (const e of extsLower) candidates.push(`${b}.${e}`);
-            for (const E of extsUpper) candidates.push(`${b}.${E}`);
+            addWithExt(b, 'png');
+            for (const e of extsLower) addWithExt(b, e);
+            for (const E of extsUpper) addWithExt(b, E);
         }
     }
 
@@ -851,14 +856,20 @@ async function loadImageItems() {
   const placeholderAuthors = new Set(['Nombre de la persona autora', 'Otra persona autora']);
   const placeholderTitles = new Set(['Portada informativa', 'Portada genérica']);
 
+  const norm = (s) => String(s || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ').trim().toLowerCase();
+
   return items.filter(it => {
-    const key = (it.file || '').toLowerCase();
+    // Dedup por autor normalizado para evitar duplicados de "Joel Hernández"
+    const authorKey = norm(it.author || it.file || '');
+    const fileKey = (it.file || '').toLowerCase();
     const isPlaceholder =
       placeholderAuthors.has(String(it.author || '').trim()) ||
       placeholderTitles.has(String(it.title || '').trim());
     if (isPlaceholder) return false;
-    if (seen.has(key)) return false;
-    seen.add(key);
+    if (seen.has(authorKey)) return false;
+    seen.add(authorKey);
     return true;
   });
 }
