@@ -481,6 +481,35 @@ function resolveImageUrl(path) {
   }
 }
 
+function encodePathVariantsList(path) {
+  const raw = String(path || '').trim().replace(/\s+/g, ' ');
+  // NFC y NFD por segmento
+  function encodeWith(normType) {
+    try {
+      let base = raw;
+      let prefix = '';
+      if (base.startsWith('./')) { prefix = './'; base = base.slice(2); }
+      else if (base.startsWith('/')) { prefix = '/'; base = base.slice(1); }
+      const segments = base.split('/');
+      const encoded = segments.map(seg => {
+        const s = String(seg || '').trim();
+        if (!s) return s;
+        if (/%[0-9A-Fa-f]{2}/.test(s)) return s;
+        const norm = s.normalize(normType);
+        return encodeURIComponent(norm);
+      });
+      return prefix + encoded.join('/');
+    } catch { return raw; }
+  }
+  const nfc = encodeWith('NFC');
+  const nfd = encodeWith('NFD');
+  const out = [];
+  if (raw) out.push(raw);
+  if (nfc && !out.includes(nfc)) out.push(nfc);
+  if (nfd && !out.includes(nfd)) out.push(nfd);
+  return out;
+}
+
 // Utilidades para imágenes (reemplaza getImageCandidates por esta versión)
 // Actualiza getImageCandidates: fuerza carpeta ./pdfs/Portadas/img y variantes robustas
 // getImageCandidates(cover)
@@ -810,17 +839,41 @@ async function resolveImageFromDirs(fileName, authorName, titleHint) {
       './pdfs/Portadas/img'
     ];
 
+    const MAP_OVERRIDES = {
+      'emilio garcia': ['Emilio García.png'],
+      'fernando gonzalez': ['Fernando González.png'],
+      'fatima ramirez': ['Fátima Ramírez.png'],
+      'gabriel de jesus': ['Gabriel de Jesús.png'],
+      'luciano perez': ['Luciano Pérez.png'],
+      'mateo garduno': ['Mateo Garduño .png', 'Mateo Garduño.png'],
+      'yael nolasco': ['Yael Nolasco .png', 'Yael Nolasco.png'],
+    };
+
     const bases = [fileName, authorName, titleHint].filter(Boolean);
     const fileCandidates = Array.from(new Set(
       bases.flatMap((b) => makeFileCandidates(String(b || '').trim()))
     ));
 
+    const key = String((authorName || fileName || titleHint) || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const extraCandidates = MAP_OVERRIDES[key] || [];
+
     const tried = [];
+    // Probar overrides primero
+    for (const dir of DIRS) {
+      for (const f of extraCandidates) {
+        for (const u of encodePathVariantsList(`${dir}/${f}`)) {
+          tried.push(u);
+          if (await probeImage(u)) return u;
+        }
+      }
+    }
+
     for (const dir of DIRS) {
       for (const f of fileCandidates) {
-        const candidate = resolveImageUrl(`${dir}/${f}`);
-        tried.push(candidate);
-        if (await probeImage(candidate)) return candidate;
+        for (const u of encodePathVariantsList(`${dir}/${f}`)) {
+          tried.push(u);
+          if (await probeImage(u)) return u;
+        }
       }
     }
     console.warn('Imagen no encontrada (probados primeros 20):', tried.slice(0, 20));
