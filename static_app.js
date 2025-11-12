@@ -100,6 +100,21 @@ document.addEventListener('DOMContentLoaded', () => {
   if (sectionAttr) renderSection(sectionAttr);
 });
 
+function lsGet(key, fallback = null) {
+  try {
+    const v = localStorage.getItem(key);
+    return v === null ? fallback : v;
+  } catch {
+    return fallback;
+  }
+}
+function lsSet(key, value) {
+  try { localStorage.setItem(key, value); } catch {}
+}
+function lsRemove(key) {
+  try { localStorage.removeItem(key); } catch {}
+}
+
 // Inicialización Firebase + Firestore
 let db = null;
 (async function initFirebase() {
@@ -203,7 +218,7 @@ async function renderSection(sectionId) {
       const coverId = `img_${getTitleFromPath(file).toLowerCase().replace(/\s+/g, '_')}`;
 
       const card = document.createElement('article');
-      card.className = 'group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow';
+      card.className = 'group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow min-h-[340px]';
       card.innerHTML = `
         <div class="h-48 sm:h-64 bg-gray-100 overflow-hidden relative" data-role="header">
           <img alt="Miniatura de ${title}" loading="lazy"
@@ -257,7 +272,7 @@ async function renderSection(sectionId) {
 
       // Votos iniciales y suscripción (con fallback local)
       const localKey = `votes_local_${coverId}`;
-      const localCount = Number(localStorage.getItem(localKey) || '0');
+      const localCount = Number(lsGet(localKey, '0'));
       try {
           const remoteCount = await getVoteCount(coverId);
           votesEl.textContent = String(Math.max(localCount, Number(remoteCount || 0)));
@@ -266,7 +281,7 @@ async function renderSection(sectionId) {
       }
       const voteBtnInit = card.querySelector('[data-action="vote"]');
       if (voteBtnInit) {
-          const voted = localStorage.getItem(`voted_${coverId}`) === 'true';
+          const voted = lsGet(`voted_${coverId}`, 'false') === 'true';
           voteBtnInit.textContent = voted ? 'Quitar voto' : 'Votar';
           voteBtnInit.disabled = false;
       }
@@ -279,7 +294,7 @@ async function renderSection(sectionId) {
               votesEl.textContent = String(remote);
               const voteBtn = card.querySelector('[data-action="vote"]');
               if (voteBtn) {
-                  const voted = localStorage.getItem(`voted_${coverId}`) === 'true';
+                  const voted = lsGet(`voted_${coverId}`, 'false') === 'true';
                   voteBtn.textContent = voted ? 'Quitar voto' : 'Votar';
                   voteBtn.disabled = false;
               }
@@ -302,7 +317,7 @@ async function renderSection(sectionId) {
 
   covers.forEach(async (cover) => {
     const votedKey = `voted_${cover.id}`;
-    let votedLocal = localStorage.getItem(votedKey) === 'true';
+    let votedLocal = lsGet(votedKey, 'false') === 'true';
 
     const titleDetected = cover.title || getTitleFromPath(cover.imagePath || cover.pdfPath || '');
 
@@ -362,7 +377,7 @@ async function renderSection(sectionId) {
 
     // Votos iniciales (con fallback local)
     const localKey = `votes_local_${cover.id}`;
-    const localCount = Number(localStorage.getItem(localKey) || '0');
+    const localCount = Number(lsGet(localKey, '0'));
     try {
         const count = await getVoteCount(cover.id);
         votesEl.textContent = String(Math.max(localCount, Number(count || 0)));
@@ -405,7 +420,7 @@ async function renderSection(sectionId) {
         const newVotes = await toggleVoteWithUserLock(cover.id);
         votesEl.textContent = String(newVotes);
         votedLocal = !votedLocal;
-        localStorage.setItem(votedKey, votedLocal ? 'true' : 'false');
+        lsSet(votedKey, votedLocal ? 'true' : 'false');
       } catch (e) {
         alert((e && e.message) ? e.message : 'No se pudo alternar el voto.');
       } finally {
@@ -644,11 +659,11 @@ async function toggleVoteWithUserLock(coverId) {
     if (!db || typeof firebase === 'undefined' || !firebase.auth || !firebase.auth().currentUser) {
         const localKey = `votes_local_${coverId}`;
         const votedKey = `voted_${coverId}`;
-        const currentLocal = Number(localStorage.getItem(localKey) || '0');
-        const isVoted = localStorage.getItem(votedKey) === 'true';
+        const currentLocal = Number(lsGet(localKey, '0'));
+        const isVoted = lsGet(votedKey, 'false') === 'true';
         const nextCount = isVoted ? Math.max(0, currentLocal - 1) : currentLocal + 1;
-        localStorage.setItem(localKey, String(nextCount));
-        localStorage.setItem(votedKey, isVoted ? 'false' : 'true');
+        lsSet(localKey, String(nextCount));
+        lsSet(votedKey, isVoted ? 'false' : 'true');
         return nextCount;
     }
 
@@ -887,7 +902,7 @@ document.addEventListener('click', async (ev) => {
       const newVotes = await toggleVoteWithUserLock(coverId);
       if (votesEl) votesEl.textContent = String(newVotes);
       const nowVoted = await hasVotedOnline(coverId)
-        .catch(() => localStorage.getItem(`voted_${coverId}`) === 'true');
+        .catch(() => lsGet(`voted_${coverId}`, 'false') === 'true');
       btn.textContent = nowVoted ? 'Quitar voto' : 'Votar';
     } catch (e) {
       console.warn('Delegated toggle vote error:', e);
