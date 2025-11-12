@@ -4,38 +4,38 @@ service cloud.firestore {
 
     // Conteo de votos por portada: votes/{coverId} -> { count: number }
     match /votes/{coverId} {
-      // Lectura pública (visualización en tiempo real)
       allow read: if true;
 
-      // Crear el doc con campo count >= 0 por usuarios autenticados (incl. anónimos)
+      // Crear doc con count inicial
       allow create: if request.auth != null
-                    && request.resource.data.keys().hasOnly(['count'])
-                    && request.resource.data.count >= 0;
+        && request.resource.data.keys().hasOnly(['count'])
+        && request.resource.data.count >= 0;
 
-      // Actualizar sólo si el nuevo count es exactamente +1 respecto al actual
+      // Actualizar: +1 si NO existe el voto del usuario; -1 si SÍ existe (toggle)
       allow update: if request.auth != null
-                    && request.resource.data.keys().hasOnly(['count'])
-                    && request.resource.data.count == resource.data.count + 1;
-
-      // No permitir delete
-      allow delete: if false;
+        && request.resource.data.keys().hasOnly(['count'])
+        && (
+          (request.resource.data.count == resource.data.count + 1
+            && !exists(/databases/$(database)/documents/userVotes/$(coverId + "_" + request.auth.uid)))
+          ||
+          (request.resource.data.count == resource.data.count - 1
+            && exists(/databases/$(database)/documents/userVotes/$(coverId + "_" + request.auth.uid)))
+        );
     }
 
-    // Registro de voto por usuario (prevención de voto duplicado):
-    // userVotes/{voteId} -> { coverId: string, uid: string, createdAt: timestamp }
-    // Donde voteId = "${coverId}_${uid}"
+    // Registro del voto por usuario: userVotes/{coverId_uid}
     match /userVotes/{voteId} {
-      // Lectura pública opcional (para depurar/estadísticas)
-      allow read: if true;
+      allow read: if request.auth != null;
 
-      // Crear sólo si el usuario está autenticado y aún no existe el doc
+      // Crear solo por el mismo usuario y cuando no exista
       allow create: if request.auth != null
-                    && !exists(/databases/$(database)/documents/userVotes/$(voteId))
-                    && request.resource.data.keys().hasOnly(['coverId', 'uid', 'createdAt'])
-                    && request.resource.data.uid == request.auth.uid;
+        && request.resource.data.keys().hasOnly(['coverId','uid','createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && !exists(/databases/$(database)/documents/userVotes/$(voteId));
 
-      // No se actualiza ni borra
-      allow update, delete: if false;
+      // Borrar solo el dueño del voto (para quitar su voto)
+      allow delete: if request.auth != null
+        && resource.data.uid == request.auth.uid;
     }
   }
 }

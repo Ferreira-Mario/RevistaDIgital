@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Acerca — La Huella del Alce</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles/shared.css" />
+    <link rel="stylesheet" href="styles/about.css" />
+  </head>
+  <body class="bg-gray-50 text-gray-900 text-[18px]">
+    <header class="bg-white shadow-md sticky top-0 z-50">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between">
+        <button class="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent hover:opacity-90 transition-opacity" onclick="location.href='index.html'" aria-label="Ir al inicio">
+          <span class="inline-flex items-center gap-3">
+            <img src="./Imagenes/Sitio General/Logo Oficial.png" alt="Logo temporal de La Huella del Alce" class="h-8 w-8 rounded-full object-cover" />
+            La Huella del Alce
+          </span>
+        </button>
+        <button id="menuBtn" class="p-3 hover:bg-gray-100 rounded-lg transition-colors" aria-label="Menú">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 sm:w-9 sm:h-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+    <aside id="sideMenu" class="fixed top-0 right-0 h-full w-full sm:w-96 max-w-[90vw] bg-white shadow-2xl transform transition-transform duration-300 z-50 translate-x-full">
+      <div class="p-7 space-y-3 overflow-y-auto h-full">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-2xl font-bold">Navegación</h2>
+          <button id="closeMenuBtn" class="p-2 hover:bg-gray-100 rounded-lg" aria-label="Cerrar">✕</button>
+        </div>
+        <a href="index.html" class="w-full block text-left px-4 py-3 hover:bg-indigo-50 rounded-lg font-medium text-lg">Revista Digital</a>
+        <div id="bocetosGroup" class="mt-2 relative group">
+          <button id="bocetosToggle" type="button" class="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-100 focus:bg-gray-100">
+            <span class="font-semibold text-gray-700 text-lg">Bocetos</span>
+            <svg id="bocetosChevron" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-600 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div id="bocetosMenu" class="hidden flex flex-col mt-1">
+            <a href="bocetos-portada.html" class="w-full block text-left px-6 py-3 hover:bg-gray-100 rounded-lg">Portada</a>
+            <a href="bocetos-seccion1.html" class="w-full block text-left px-6 py-3 hover:bg-gray-100 rounded-lg">1ª Sección</a>
+            <a href="bocetos-seccion2.html" class="w-full block text-left px-6 py-3 hover:bg-gray-100 rounded-lg">2ª Sección</a>
+            <a href="bocetos-seccion3.html" class="w-full block text-left px-6 py-3 hover:bg-gray-100 rounded-lg">3ª Sección</a>
+            <a href="bocetos-seccion4.html" class="w-full block text-left px-6 py-3 hover:bg-gray-100 rounded-lg">4ª Sección</a>
+            <a href="bocetos-seccion5.html" class="w-full block text-left px-6 py-3 hover:bg-gray-100 rounded-lg">5ª Sección</a>
+          </div>
+        </div>
+        <a href="about.html" class="w-full block text-left px-4 py-3 hover:bg-indigo-50 rounded-lg font-medium text-lg">Acerca de nosotros</a>
+      </div>
+    </aside>
+    <div id="menuBackdrop" class="hidden fixed inset-0 bg-black/30 z-40"></div>
+
+    <main class="max-w-6xl mx-auto px-4 py-6">
+      <section class="">
+        <div class="bg-white rounded-2xl shadow-xl p-8 space-y-6">
+          <h2 class="text-3xl font-bold">Acerca de Nosotros</h2>
+          <p class="text-gray-700">Revista digital estática para visualizar portadas en imagen y simular votación.</p>
+          <p class="text-gray-600">Para producción con datos en tiempo real y subida de archivos, usa la versión React + Firebase.</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
+    <script src="./firebase_config.js"></script>
+    <script src="./static_app.js"></script>
+  </body>
+  </html>

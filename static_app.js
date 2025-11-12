@@ -17,19 +17,49 @@ function closeMenu() {
   menuBackdrop.classList.add('hidden');
 }
 
-// Adjuntar listeners de forma segura
 if (menuBtn) menuBtn.addEventListener('click', openMenu);
 if (closeMenuBtn) closeMenuBtn.addEventListener('click', closeMenu);
 if (menuBackdrop) menuBackdrop.addEventListener('click', closeMenu);
+
+// Cerrar menú al pulsar cualquier enlace hash
+if (sideMenu) {
+  // Cierra el menú cuando se hace clic en cualquier enlace con hash
+  sideMenu.addEventListener('click', (e) => {
+    const link = e.target.closest('a[href]');
+    if (link) closeMenu();
+  });
+}
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+
+const bocetosToggle = document.getElementById('bocetosToggle');
+const bocetosMenu = document.getElementById('bocetosMenu');
+const bocetosChevron = document.getElementById('bocetosChevron');
+function toggleBocetos() {
+  if (!bocetosMenu || !bocetosChevron) return;
+  const open = !bocetosMenu.classList.contains('hidden');
+  if (open) {
+    bocetosMenu.classList.add('hidden');
+    bocetosChevron.style.transform = '';
+  } else {
+    bocetosMenu.classList.remove('hidden');
+    bocetosChevron.style.transform = 'rotate(180deg)';
+  }
+}
+if (bocetosToggle) bocetosToggle.addEventListener('click', toggleBocetos);
 
 // Navegación dentro del menú lateral (no romper si no existe)
 if (sideMenu) {
-  sideMenu.querySelectorAll('[data-route]').forEach(btn => {
-    btn.addEventListener('click', () => {
+  // Cierra el menú cuando se hace clic en cualquier enlace hash (#/...)
+  sideMenu.addEventListener('click', (e) => {
+    const link = e.target.closest('a[href]');
+    if (link) { closeMenu(); return; }
+    // Compatibilidad: elementos con data-route (si aún existen)
+    const btn = e.target.closest('[data-route]');
+    if (btn && btn.dataset.route) {
+      e.preventDefault();
       window.location.hash = btn.dataset.route;
       closeMenu();
-    });
+    }
   });
 }
 
@@ -40,29 +70,35 @@ const views = {
   about: document.getElementById('view-about'),
 };
 function route() {
+  const hasViews = !!(views.home || views.bocetos || views.about);
+  if (!hasViews) return;
   const hash = window.location.hash || '#/';
   const parts = hash.replace('#/', '').split('/');
   const base = parts[0] || '';
   const sectionId = parts[1] || 'portada';
 
-  views.home.classList.add('hidden');
-  views.bocetos.classList.add('hidden');
-  views.about.classList.add('hidden');
+  if (views.home) views.home.classList.add('hidden');
+  if (views.bocetos) views.bocetos.classList.add('hidden');
+  if (views.about) views.about.classList.add('hidden');
 
   if (base === '' || base === undefined) {
-    views.home.classList.remove('hidden');
+    if (views.home) views.home.classList.remove('hidden');
   } else if (base === 'bocetos') {
-    views.bocetos.classList.remove('hidden');
+    if (views.bocetos) views.bocetos.classList.remove('hidden');
     renderSection(sectionId);
   } else if (base === 'about') {
-    views.about.classList.remove('hidden');
+    if (views.about) views.about.classList.remove('hidden');
   } else {
-    views.home.classList.remove('hidden');
+    if (views.home) views.home.classList.remove('hidden');
   }
 }
 window.addEventListener('hashchange', route);
-// Inicializa la vista al cargar
-document.addEventListener('DOMContentLoaded', route);
+// Inicializa la vista al cargar (router si hay vistas) y render directo si se especifica sección
+document.addEventListener('DOMContentLoaded', () => {
+  route();
+  const sectionAttr = (document.body && document.body.dataset) ? document.body.dataset.section : '';
+  if (sectionAttr) renderSection(sectionAttr);
+});
 
 // Inicialización Firebase + Firestore
 let db = null;
@@ -169,7 +205,7 @@ async function renderSection(sectionId) {
       const card = document.createElement('article');
       card.className = 'group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow';
       card.innerHTML = `
-        <div class="h-64 bg-gray-100 overflow-hidden relative" data-role="header">
+        <div class="h-48 sm:h-64 bg-gray-100 overflow-hidden relative" data-role="header">
           <img alt="Miniatura de ${title}" loading="lazy"
                class="w-full h-full object-cover transform transition-transform duration-300 ease-out group-hover:scale-110"
                data-role="thumb">
@@ -177,16 +213,16 @@ async function renderSection(sectionId) {
         <div class="p-6">
           <h3 class="text-xl font-bold mb-1">${authorName}</h3>
           <p class="text-gray-600 mb-4 line-clamp-2">${title}</p>
-          <div class="flex gap-2 mb-4">
-            <button class="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200" data-action="info">Info</button>
-            <button class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2" data-action="view">
-              <img alt="" class="w-6 h-6 rounded object-cover transform transition-transform duration-300 ease-out group-hover:scale-110" data-role="mini" style="pointer-events:none;">
+          <div class="grid grid-cols-3 gap-2 mt-4 items-stretch">
+            <button class="btn-outline flex-1 min-h-[42px] text-sm sm:text-base whitespace-nowrap" data-action="info">Info</button>
+            <button class="btn-primary flex-1 min-h-[42px] text-sm sm:text-base whitespace-nowrap flex items-center justify-center gap-2" data-action="view">
+              <img alt="" class="w-5 h-5 sm:w-6 sm:h-6 rounded object-cover" data-role="mini" style="pointer-events:none; display:inline-block;">
               Ver
             </button>
-            <button class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" data-action="vote">Votar</button>
+            <button class="btn-danger flex-1 min-h-[42px] text-sm sm:text-base whitespace-nowrap" data-action="vote">Votar</button>
           </div>
-          <div class="text-center">
-            <span class="text-2xl font-bold text-indigo-600" data-role="votes">0</span>
+          <div class="text-center mt-2">
+            <span class="text-2xl font-bold text-brand" data-role="votes">0</span>
             <span class="text-gray-500 ml-2">votos</span>
           </div>
         </div>
@@ -214,21 +250,38 @@ async function renderSection(sectionId) {
           const headerEl = card.querySelector('[data-role="header"]');
           thumbEl.style.display = 'none';
           miniEl.style.display = 'none';
-          headerEl.className = 'h-64 bg-gray-200 flex items-center justify-center text-gray-500';
+          headerEl.className = 'h-48 sm:h-64 bg-gray-200 flex items-center justify-center text-gray-500';
           headerEl.textContent = 'Imagen no encontrada';
           card.dataset.imageUrl = '';
       }
 
-      // Votos iniciales y suscripción
-      try { votesEl.textContent = String(await getVoteCount(coverId)); } catch {}
+      // Votos iniciales y suscripción (con fallback local)
+      const localKey = `votes_local_${coverId}`;
+      const localCount = Number(localStorage.getItem(localKey) || '0');
+      try {
+          const remoteCount = await getVoteCount(coverId);
+          votesEl.textContent = String(Math.max(localCount, Number(remoteCount || 0)));
+      } catch {
+          votesEl.textContent = String(localCount);
+      }
+      const voteBtnInit = card.querySelector('[data-action="vote"]');
+      if (voteBtnInit) {
+          const voted = localStorage.getItem(`voted_${coverId}`) === 'true';
+          voteBtnInit.textContent = voted ? 'Quitar voto' : 'Votar';
+          voteBtnInit.disabled = false;
+      }
+
       if (db) {
           const ref = db.collection('votes').doc(coverId);
           const unsub = ref.onSnapshot((snap) => {
               const data = snap.exists ? snap.data() : null;
-              votesEl.textContent = String((data && data.count) || 0);
+              const remote = Number((data && data.count) || 0);
+              votesEl.textContent = String(remote);
               const voteBtn = card.querySelector('[data-action="vote"]');
               if (voteBtn) {
-                  voteBtn.disabled = localStorage.getItem(`voted_${coverId}`) === 'true';
+                  const voted = localStorage.getItem(`voted_${coverId}`) === 'true';
+                  voteBtn.textContent = voted ? 'Quitar voto' : 'Votar';
+                  voteBtn.disabled = false;
               }
           });
           voteUnsubs.set(coverId, unsub);
@@ -256,7 +309,7 @@ async function renderSection(sectionId) {
     const card = document.createElement('article');
     card.className = 'group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow';
     card.innerHTML = `
-      <div class="h-64 bg-gray-100 overflow-hidden relative" data-role="header">
+      <div class="h-48 sm:h-64 bg-gray-100 overflow-hidden relative" data-role="header">
         <img alt="Miniatura de ${titleDetected}" loading="lazy"
              class="w-full h-full object-cover transform transition-transform duration-300 ease-out group-hover:scale-110"
              data-role="thumb">
@@ -264,13 +317,13 @@ async function renderSection(sectionId) {
       <div class="p-6">
         <h3 class="text-xl font-bold mb-2">${titleDetected}</h3>
         <p class="text-gray-600 mb-4 line-clamp-2">${cover.description || ''}</p>
-        <div class="flex gap-2 mb-4">
-          <button class="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200" data-action="info">Info</button>
-          <button class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2" data-action="view">
-            <img alt="" class="w-6 h-6 rounded object-cover transform transition-transform duration-300 ease-out group-hover:scale-110" data-role="mini">
+        <div class="grid grid-cols-3 gap-2 mb-4 items-stretch">
+          <button class="flex-1 px-4 min-h-[42px] bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm sm:text-base whitespace-nowrap" data-action="info">Info</button>
+          <button class="flex-1 px-4 min-h-[42px] bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap" data-action="view">
+            <img alt="" class="w-5 h-5 sm:w-6 sm:h-6 rounded object-cover" data-role="mini">
             Ver
           </button>
-          <button class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" data-action="vote">Votar</button>
+          <button class="flex-1 px-4 min-h-[42px] bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm sm:text-base whitespace-nowrap" data-action="vote">Votar</button>
         </div>
         <div class="text-center">
           <span class="text-2xl font-bold text-indigo-600" data-role="votes">0</span>
@@ -293,7 +346,7 @@ async function renderSection(sectionId) {
         const headerEl = card.querySelector('[data-role="header"]');
         imgEl.style.display = 'none';
         miniEl.style.display = 'none';
-        headerEl.className = 'h-64 bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white';
+        headerEl.className = 'h-48 sm:h-64 bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white';
         headerEl.innerHTML = `
           <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16h8M8 12h8M8 8h8" />
@@ -307,27 +360,28 @@ async function renderSection(sectionId) {
     const viewBtn = card.querySelector('[data-action="view"]');
     const voteBtn = card.querySelector('[data-action="vote"]');
 
+    // Votos iniciales (con fallback local)
+    const localKey = `votes_local_${cover.id}`;
+    const localCount = Number(localStorage.getItem(localKey) || '0');
     try {
-      const count = await getVoteCount(cover.id);
-      votesEl.textContent = String(count);
-    } catch {}
+        const count = await getVoteCount(cover.id);
+        votesEl.textContent = String(Math.max(localCount, Number(count || 0)));
+    } catch {
+        votesEl.textContent = String(localCount);
+    }
+    // Deshabilitar si ya votó local/online
+    voteBtn.disabled = votedLocal;
 
-    try {
-      if (await hasVotedOnline(cover.id)) {
-        votedLocal = true;
-        localStorage.setItem(votedKey, 'true');
-      }
-    } catch {}
-
+    // Suscripción remota si hay Firebase
     if (db) {
-      const ref = db.collection('votes').doc(cover.id);
-      const unsub = ref.onSnapshot((snap) => {
-        const data = (snap && typeof snap.data === 'function') ? snap.data() : null;
-        const count = (snap && snap.exists && data && typeof data.count !== 'undefined') ? Number(data.count) : 0;
-        votesEl.textContent = String(count);
-        voteBtn.disabled = votedLocal;
-      }, (err) => console.warn('onSnapshot error:', err));
-      voteUnsubs.set(cover.id, unsub);
+        const ref = db.collection('votes').doc(cover.id);
+        const unsub = ref.onSnapshot((snap) => {
+            const data = (snap && typeof snap.data === 'function') ? snap.data() : null;
+            const count = (snap && snap.exists && data && typeof data.count !== 'undefined') ? Number(data.count) : 0;
+            votesEl.textContent = String(count);
+            voteBtn.disabled = votedLocal;
+        }, (err) => console.warn('onSnapshot error:', err));
+        voteUnsubs.set(cover.id, unsub);
     }
 
     infoBtn.addEventListener('click', () => showInfo({
@@ -346,15 +400,15 @@ async function renderSection(sectionId) {
     });
 
     voteBtn.addEventListener('click', async () => {
-      if (votedLocal) return;
       try {
         voteBtn.disabled = true;
-        const newVotes = await incrementVoteWithUserLock(cover.id);
+        const newVotes = await toggleVoteWithUserLock(cover.id);
         votesEl.textContent = String(newVotes);
-        localStorage.setItem(votedKey, 'true');
-        votedLocal = true;
+        votedLocal = !votedLocal;
+        localStorage.setItem(votedKey, votedLocal ? 'true' : 'false');
       } catch (e) {
-        alert((e && e.message) ? e.message : 'No se pudo registrar el voto.');
+        alert((e && e.message) ? e.message : 'No se pudo alternar el voto.');
+      } finally {
         voteBtn.disabled = false;
       }
     });
@@ -374,7 +428,7 @@ function showInfo(info) {
   }
   infoPopup.classList.remove('hidden');
 }
-closeInfoBtn.addEventListener('click', () => infoPopup.classList.add('hidden'));
+if (closeInfoBtn) closeInfoBtn.addEventListener('click', () => infoPopup.classList.add('hidden'));
 // Cierra al hacer clic en el fondo (backdrop)
 if (infoPopup) {
     infoPopup.addEventListener('click', (e) => {
@@ -573,55 +627,61 @@ function getTitleFromPath(path) {
 // NUEVO: listeners para votos y prevención de doble voto por usuario
 // Declarar voteUnsubs ANTES de usarlo en renderSection
 const voteUnsubs = new Map();
+
 async function hasVotedOnline(coverId) {
-  try {
+    if (!db || typeof firebase === 'undefined' || !firebase.auth) return false;
     const user = firebase.auth().currentUser;
-    if (!user || !db) return false;
+    if (!user) return false;
     const voteId = `${coverId}_${user.uid}`;
     const ref = db.collection('userVotes').doc(voteId);
     const snap = await ref.get();
-    return snap.exists;
-  } catch (e) {
-    console.warn('hasVotedOnline error:', e);
-    return false;
-  }
+    return !!(snap && snap.exists);
 }
 
-// NUEVO: transacción con bloqueo por usuario y +1 al conteo
-async function incrementVoteWithUserLock(coverId) {
-    if (!db || !firebase || !firebase.auth || !firebase.auth().currentUser) {
-        // Fallback local: suma y bloquea por localStorage
+// NUEVO: alterna voto con bloqueo por usuario (suma/resta y crea/borra userVotes)
+async function toggleVoteWithUserLock(coverId) {
+    // Respaldo local si Firebase no está disponible
+    if (!db || typeof firebase === 'undefined' || !firebase.auth || !firebase.auth().currentUser) {
         const localKey = `votes_local_${coverId}`;
-        const current = Number(localStorage.getItem(localKey) || '0') + 1;
-        localStorage.setItem(localKey, String(current));
-        localStorage.setItem(`voted_${coverId}`, 'true');
-        return current;
+        const votedKey = `voted_${coverId}`;
+        const currentLocal = Number(localStorage.getItem(localKey) || '0');
+        const isVoted = localStorage.getItem(votedKey) === 'true';
+        const nextCount = isVoted ? Math.max(0, currentLocal - 1) : currentLocal + 1;
+        localStorage.setItem(localKey, String(nextCount));
+        localStorage.setItem(votedKey, isVoted ? 'false' : 'true');
+        return nextCount;
     }
+
     const user = firebase.auth().currentUser;
     if (!user) throw new Error('No autenticado. Activa Auth anónima en Firebase.');
-
     const voteId = `${coverId}_${user.uid}`;
     const votesRef = db.collection('votes').doc(coverId);
     const userVoteRef = db.collection('userVotes').doc(voteId);
 
-    return db.runTransaction(async (tx) => {
-        const already = await tx.get(userVoteRef);
-        if (already.exists) throw new Error('Ya registraste tu voto en esta portada.');
-
+    const result = await db.runTransaction(async (tx) => {
+        const userDoc = await tx.get(userVoteRef);
         const voteSnap = await tx.get(votesRef);
         const voteData = (voteSnap && typeof voteSnap.data === 'function') ? voteSnap.data() : null;
         const current = (voteSnap && voteSnap.exists && voteData && typeof voteData.count !== 'undefined') ? Number(voteData.count) : 0;
 
-        tx.set(userVoteRef, {
-            coverId,
-            uid: user.uid,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        }, { merge: false });
-
-        tx.set(votesRef, { count: current + 1 }, { merge: true });
-
-        return current + 1;
+        if (userDoc.exists) {
+            // Quitar voto
+            tx.delete(userVoteRef);
+            tx.set(votesRef, { count: Math.max(0, current - 1) }, { merge: true });
+            return Math.max(0, current - 1);
+        } else {
+            // Registrar voto
+            tx.set(userVoteRef, {
+                coverId,
+                uid: user.uid,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            });
+            tx.set(votesRef, { count: current + 1 }, { merge: true });
+            return current + 1;
+        }
     });
+
+    return result;
 }
 
 // Cargar índice de imágenes para Portada
@@ -651,56 +711,91 @@ function removeAccents(s) {
   try { return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch { return s; }
 }
 function makeFileCandidates(fileName) {
-  const hasExt = /\.(png|jpe?g|webp)$/i.test(fileName || '');
-  const base = hasExt ? fileName.replace(/\.(png|jpe?g|webp)$/i, '') : (fileName || '');
-  const norm = base.trim().replace(/\s+/g, ' ');
-  const noAcc = removeAccents(norm);
-  const bases = Array.from(new Set([
-    norm, noAcc,
-    norm.replace(/ /g, '_'), norm.replace(/ /g, '-'), norm.replace(/ /g, ''),
-    noAcc.replace(/ /g, '_'), noAcc.replace(/ /g, '-'), noAcc.replace(/ /g, ''),
-    norm.toLowerCase(), noAcc.toLowerCase(),
-    norm.toLowerCase().replace(/ /g, '_'), norm.toLowerCase().replace(/ /g, '-'), norm.toLowerCase().replace(/ /g, ''),
-    noAcc.toLowerCase().replace(/ /g, '_'), noAcc.toLowerCase().replace(/ /g, '-'), noAcc.toLowerCase().replace(/ /g, ''),
-  ]));
-  const extsLower = ['png', 'jpg', 'jpeg', 'webp'];
-  const extsUpper = ['PNG', 'JPG', 'JPEG', 'WEBP'];
-  const candidates = [];
-  if (hasExt) {
-    const ext = (fileName.split('.').pop() || 'png');
-    const b = fileName.slice(0, -(ext.length + 1));
-    candidates.push(`${b}.${ext}`, `${b}.${ext.toUpperCase()}`);
-  } else {
-    for (const b of bases) {
-      candidates.push(`${b}.png`, `${b}.PNG`);
-      for (const e of extsLower) candidates.push(`${b}.${e}`);
-      for (const E of extsUpper) candidates.push(`${b}.${E}`);
+    const hasExt = /\.(png|jpe?g|webp)$/i.test(fileName || '');
+    const baseRaw = hasExt ? fileName.replace(/\.(png|jpe?g|webp)$/i, '') : (fileName || '');
+
+    // Normalizaciones robustas
+    const trimmed = String(baseRaw || '').trim();
+    const normSpaces = trimmed.replace(/\s+/g, ' ');                 // compacta espacios
+    const fixHyphenNum = normSpaces.replace(/\s*-\s*(\d+)/g, '-$1'); // "Maxil -1" -> "Maxil-1"
+    const noDots = fixHyphenNum.replace(/\./g, '');                  // "Pérez. -1" -> "Pérez -1"
+    const packNum = noDots.replace(/(\S)\s+(-\d+)/g, '$1$2');        // "Perez -1" -> "Perez-1"
+    const asciiPack = removeAccents(packNum);                        // sin acentos
+
+    // Quita sufijo -n si existe
+    const stripSuffix = (s) => String(s || '').replace(/-\d+$/,'');
+    // Construye variantes base (incluye con y sin sufijo)
+    const basesCore = Array.from(new Set([
+        normSpaces, fixHyphenNum, noDots, packNum,
+        removeAccents(normSpaces), removeAccents(fixHyphenNum),
+        removeAccents(noDots), asciiPack,
+        packNum.toLowerCase(), asciiPack.toLowerCase(),
+        stripSuffix(packNum), stripSuffix(asciiPack),
+        stripSuffix(packNum).toLowerCase(), stripSuffix(asciiPack).toLowerCase()
+    ]));
+
+    // Versiones con separadores
+    const basesWithSeps = new Set();
+    for (const b of basesCore) {
+        basesWithSeps.add(b);
+        basesWithSeps.add(b.replace(/ /g, '_'));
+        basesWithSeps.add(b.replace(/ /g, '-'));
+        basesWithSeps.add(b.replace(/ /g, ''));
     }
-  }
-  return Array.from(new Set(candidates));
+
+    // Genera variantes con y sin sufijo; si no hay sufijo, añade también "-1"
+    const suffixVariants = (s) => {
+        const out = new Set([s, stripSuffix(s)]);
+        if (!/-\d+$/.test(s)) out.add(`${stripSuffix(s)}-1`);
+        return Array.from(out);
+    };
+    const basesFinal = Array.from(new Set(
+        Array.from(basesWithSeps).flatMap(suffixVariants)
+    ));
+
+    const extsLower = ['png', 'jpg', 'jpeg', 'webp'];
+    const extsUpper = ['PNG', 'JPG', 'JPEG', 'WEBP'];
+    const candidates = [];
+
+    if (hasExt) {
+        const ext = (fileName.split('.').pop() || 'png');
+        for (const bv of basesFinal) {
+            candidates.push(`${bv}.${ext}`, `${bv}.${ext.toUpperCase()}`);
+        }
+    } else {
+        for (const b of basesFinal) {
+            candidates.push(`${b}.png`, `${b}.PNG`);
+            for (const e of extsLower) candidates.push(`${b}.${e}`);
+            for (const E of extsUpper) candidates.push(`${b}.${E}`);
+        }
+    }
+
+    return Array.from(new Set(candidates));
 }
 
 // Resuelve la primera URL válida probando múltiples directorios
 async function resolveImageFromDirs(fileName, authorName, titleHint) {
-  const DIRS = [
-    './Imagenes/Portadas/img',
-    './Imagagenes/Portadas/img',
-    './pdfs/Portadas/img'
-  ];
+    const DIRS = [
+      './Imagenes/Portadas/img',
+      './Imagagenes/Portadas/img',
+      './pdfs/Portadas/img'
+    ];
 
-  // Construye candidatos desde file + autor + título
-  const bases = [fileName, authorName, titleHint].filter(Boolean);
-  const fileCandidates = Array.from(new Set(
-    bases.flatMap((b) => makeFileCandidates(String(b || '').trim()))
-  ));
+    const bases = [fileName, authorName, titleHint].filter(Boolean);
+    const fileCandidates = Array.from(new Set(
+      bases.flatMap((b) => makeFileCandidates(String(b || '').trim()))
+    ));
 
-  for (const dir of DIRS) {
-    for (const f of fileCandidates) {
-      const candidate = resolveImageUrl(`${dir}/${f}`);
-      if (await probeImage(candidate)) return candidate;
+    const tried = [];
+    for (const dir of DIRS) {
+      for (const f of fileCandidates) {
+        const candidate = resolveImageUrl(`${dir}/${f}`);
+        tried.push(candidate);
+        if (await probeImage(candidate)) return candidate;
+      }
     }
-  }
-  return null;
+    console.warn('Imagen no encontrada (probados primeros 20):', tried.slice(0, 20));
+    return null;
 }
 
 // Fusiona fuentes: img_index.json + portadas.json (respaldo)
@@ -737,10 +832,16 @@ async function loadImageItems() {
       }
     }
   } catch {}
-
   const seen = new Set();
+  const placeholderAuthors = new Set(['Nombre de la persona autora', 'Otra persona autora']);
+  const placeholderTitles = new Set(['Portada informativa', 'Portada genérica']);
+
   return items.filter(it => {
     const key = (it.file || '').toLowerCase();
+    const isPlaceholder =
+      placeholderAuthors.has(String(it.author || '').trim()) ||
+      placeholderTitles.has(String(it.title || '').trim());
+    if (isPlaceholder) return false;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -748,46 +849,75 @@ async function loadImageItems() {
 }
 
 // Delegación: un único listener para Info / Ver / Votar (solo Portada)
-(function setupCoversGridDelegation() {
-    if (!coversGrid) return;
-    coversGrid.addEventListener('click', async (e) => {
-        const btn = e.target.closest('[data-action]');
-        if (!btn) return;
-        const card = btn.closest('article');
-        if (!card || card.dataset.scope !== 'portada') return;
+document.addEventListener('click', async (ev) => {
+  const btn = ev.target.closest('[data-action]');
+  if (!btn) return;
 
-        const action = btn.dataset.action;
-        const file = card.dataset.file || '';
-        const author = card.dataset.author || '';
-        const title = card.dataset.title || '';
-        const coverId = card.dataset.coverId || '';
-        const votesEl = card.querySelector('[data-role="votes"]');
+  const card = btn.closest('article');
+  if (!card || card.dataset.scope !== 'portada') return;
 
-        if (action === 'info') {
-            showInfo({ Autor: author, Título: title, Archivo: file });
-            return;
-        }
+  const action = btn.dataset.action;
+  const file = card.dataset.file || '';
+  const author = card.dataset.author || '';
+  const title = card.dataset.title || '';
+  const coverId = card.dataset.coverId || '';
+  const votesEl = card.querySelector('[data-role="votes"]');
 
-        if (action === 'view') {
-            let openUrl = card.dataset.imageUrl;
-            if (!openUrl) openUrl = await resolveImageFromDirs(file, author, title);
-            if (!openUrl) { alert('No se pudo abrir la imagen.'); return; }
-            openImageViewer(openUrl, author || title);
-            return;
-        }
-
-        if (action === 'vote') {
-            if (!coverId) return;
-            try {
-                btn.disabled = true;
-                const newVotes = await incrementVoteWithUserLock(coverId);
-                if (votesEl) votesEl.textContent = String(newVotes);
-                localStorage.setItem(`voted_${coverId}`, 'true');
-            } catch (e2) {
-                alert((e2 && e2.message) || 'No se pudo registrar el voto.');
-                btn.disabled = false;
-            }
-            return;
-        }
+  if (action === 'info') {
+    showInfo({
+      Título: title,
+      Autor: author,
+      Sección: 'Portada',
+      Archivo: card.dataset.imageUrl || file || '—',
     });
+    return;
+  }
+
+  if (action === 'view') {
+    let fullUrl = card.dataset.imageUrl;
+    if (!fullUrl) fullUrl = await resolveImageFromDirs(file, author, title);
+    if (!fullUrl) { alert('No se pudo abrir la imagen.'); return; }
+    openImageViewer(fullUrl, title);
+    return;
+  }
+
+  if (action === 'vote') {
+    btn.disabled = true;
+    try {
+      const newVotes = await toggleVoteWithUserLock(coverId);
+      if (votesEl) votesEl.textContent = String(newVotes);
+      const nowVoted = await hasVotedOnline(coverId)
+        .catch(() => localStorage.getItem(`voted_${coverId}`) === 'true');
+      btn.textContent = nowVoted ? 'Quitar voto' : 'Votar';
+    } catch (e) {
+      console.warn('Delegated toggle vote error:', e);
+    } finally {
+      btn.disabled = false;
+    }
+    return;
+  }
+});
+
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+
+function applyTheme(theme) {
+  const html = document.documentElement;
+  const next = (theme === 'mono') ? 'mono' : 'color';
+  html.setAttribute('data-theme', next);
+  if (themeToggleBtn) {
+    themeToggleBtn.textContent = next === 'mono' ? 'Blanco y negro' : 'Color';
+  }
+}
+
+(function initTheme() {
+  const saved = localStorage.getItem('siteTheme') || 'color';
+  applyTheme(saved);
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+      const current = localStorage.getItem('siteTheme') || 'color';
+      const next = current === 'color' ? 'mono' : 'color';
+      localStorage.setItem('siteTheme', next);
+      applyTheme(next);
+    });
+  }
 })();
