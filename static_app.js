@@ -463,10 +463,19 @@ function resolvePdfUrl(path) {
 function resolveImageUrl(path) {
   if (!path) return '';
   try {
-    const trimmed = String(path).trim();
-    // No volver a codificar si ya contiene secuencias %XX válidas
-    if (/%[0-9A-Fa-f]{2}/.test(trimmed)) return trimmed;
-    return encodeURI(trimmed);
+    const trimmed = String(path).trim().replace(/\s+/g, ' ');
+    let base = trimmed;
+    let prefix = '';
+    if (base.startsWith('./')) { prefix = './'; base = base.slice(2); }
+    else if (base.startsWith('/')) { prefix = '/'; base = base.slice(1); }
+    const segments = base.split('/');
+    const encoded = segments.map(seg => {
+      const s = String(seg || '').trim();
+      if (!s) return s;
+      if (/%[0-9A-Fa-f]{2}/.test(s)) return s; // ya codificado
+      return encodeURIComponent(s);
+    });
+    return prefix + encoded.join('/');
   } catch {
     return path;
   }
