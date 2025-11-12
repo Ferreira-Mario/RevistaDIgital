@@ -523,7 +523,7 @@ function getImageCandidates(cover) {
 
   // Si imagePath apunta ya a img, colócalo primero
   if (cover.imagePath && /\/(Imagenes|Imagagenes|pdfs)\/Portadas\/img\//.test(String(cover.imagePath))) {
-    urls.push(resolveImageUrl(cover.imagePath));
+    for (const u of encodePathVariantsList(cover.imagePath)) urls.push(u);
   }
 
   const extsLower = ['png', 'jpg', 'jpeg', 'webp'];
@@ -533,11 +533,11 @@ function getImageCandidates(cover) {
     for (const v of nameVariants(base)) {
       for (const dir of DIRS) {
         // Prioriza PNG
-        urls.push(resolveImageUrl(`${dir}/${v}.png`));
-        urls.push(resolveImageUrl(`${dir}/${v}.PNG`));
+        for (const u of encodePathVariantsList(`${dir}/${v}.png`)) urls.push(u);
+        for (const u of encodePathVariantsList(`${dir}/${v}.PNG`)) urls.push(u);
         // Luego otras extensiones
-        for (const e of extsLower) urls.push(resolveImageUrl(`${dir}/${v}.${e}`));
-        for (const E of extsUpper) urls.push(resolveImageUrl(`${dir}/${v}.${E}`));
+        for (const e of extsLower) { for (const u of encodePathVariantsList(`${dir}/${v}.${e}`)) urls.push(u); }
+        for (const E of extsUpper) { for (const u of encodePathVariantsList(`${dir}/${v}.${E}`)) urls.push(u); }
       }
     }
   }
