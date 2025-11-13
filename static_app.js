@@ -869,6 +869,7 @@ function makeFileCandidates(fileName) {
 
 // Resuelve la primera URL válida probando múltiples directorios
 async function resolveImageFromDirs(fileName, authorName, titleHint) {
+  if (DRIVE_ONLY && String(window.location.hostname || '').endsWith('.github.io')) return null;
   const DIRS = [
     './IMGs/Bocetos/Portadas',
     './IMGs/Bocetos/seccion1',
@@ -1000,6 +1001,7 @@ async function loadImageItems(sectionId) {
   try {
     const host = String(window.location.hostname || '');
     if (host.endsWith('.github.io')) {
+      if (DRIVE_ONLY) throw new Error('Drive-only: omitir listado por API');
       const owner = host.replace('.github.io','');
       const pathParts = String(window.location.pathname || '/').split('/').filter(Boolean);
       let repoCandidates = Array.from(new Set([pathParts[0] || '', pathParts[1] || ''].filter(Boolean)));
@@ -1269,3 +1271,4 @@ async function renderResults(sectionId) {
     openImageViewer(url, author);
   });
 }
+const DRIVE_ONLY = true;
