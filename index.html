@@ -20,7 +20,7 @@
           aria-label="Ir al inicio"
         >
           <span class="inline-flex items-center gap-3">
-            <img src="./Imagenes/Sitio General/Logo Oficial.png" alt="Logo temporal de La Huella del Alce" class="h-8 w-8 rounded-full object-cover" />
+            <img src="./IMGs/Sitio General/Logo Oficial.png" alt="Logo temporal de La Huella del Alce" class="h-8 w-8 rounded-full object-cover" />
             La Huella del Alce
           </span>
         </button>
@@ -69,6 +69,21 @@
           </div>
         </div>
 
+        <div id="resultadosGroup" class="mt-2 relative group">
+          <button id="resultadosToggle" type="button"
+                  class="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-100 focus:bg-gray-100">
+            <span class="font-semibold text-gray-700 text-lg">Resultados Votación</span>
+            <svg id="resultadosChevron" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-600 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9l6 6 6-6"/>
+            </svg>
+          </button>
+
+          <div id="resultadosMenu" class="hidden flex flex-col mt-1">
+            <a href="resultados-portada.html" class="w-full block text-left px-6 py-3 hover:bg-gray-100 rounded-lg">Portada</a>
+            <a href="resultados-seccion1.html" class="w-full block text-left px-6 py-3 hover:bg-gray-100 rounded-lg">Sección 1</a>
+          </div>
+        </div>
+
         <!-- Acerca -->
         <a href="about.html" class="w-full block text-left px-4 py-3 hover:bg-indigo-50 rounded-lg font-medium text-lg">
           Acerca de nosotros
@@ -95,6 +110,7 @@
                 </p>
                 <div class="flex flex-wrap gap-3 sm:gap-4">
                   <a href="bocetos-portada.html" class="px-6 py-3 rounded-lg btn-primary font-semibold">Ver Portadas</a>
+                  <a href="bocetos-seccion1.html" class="px-6 py-3 rounded-lg btn-outline font-semibold">Ver Sección 1</a>
                   <a href="#/" class="px-6 py-3 rounded-lg btn-danger font-semibold">Explora</a>
                 </div>
               </div>

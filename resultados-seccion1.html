@@ -3,12 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Bocetos — 2ª Sección</title>
+    <title>Resultados — Sección 1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="styles/shared.css" />
-    <link rel="stylesheet" href="styles/bocetos.css" />
   </head>
-  <body class="bg-gray-50 text-gray-900 text-[18px]" data-section="seccion2">
+  <body class="bg-gray-50 text-gray-900 text-[18px]" data-section="seccion1">
     <header class="bg-white shadow-md sticky top-0 z-50">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between">
         <button class="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent hover:opacity-90 transition-opacity" onclick="location.href='index.html'" aria-label="Ir al inicio">
@@ -38,11 +37,17 @@
           </button>
           <div id="bocetosMenu" class="hidden flex flex-col mt-1">
             <a href="bocetos-portada.html" class="w-full block text-left px-6 py-3 hover:bg-gray-100 rounded-lg">Portada</a>
-            <a href="bocetos-seccion1.html" class="w-full block text-left px-6 py-3 hover:bg-gray-100 rounded-lg">1ª Sección</a>
-            <a href="bocetos-seccion2.html" class="w-full block text-left px-6 py-3 hover:bg-gray-100 rounded-lg">2ª Sección</a>
-            <a href="bocetos-seccion3.html" class="w-full block text-left px-6 py-3 hover:bg-gray-100 rounded-lg">3ª Sección</a>
-            <a href="bocetos-seccion4.html" class="w-full block text-left px-6 py-3 hover:bg-gray-100 rounded-lg">4ª Sección</a>
-            <a href="bocetos-seccion5.html" class="w-full block text-left px-6 py-3 hover:bg-gray-100 rounded-lg">5ª Sección</a>
+            <a href="bocetos-seccion1.html" class="w-full block text-left px-6 py-3 hover:bg-gray-100 rounded-lg">Sección 1</a>
+          </div>
+        </div>
+        <div id="resultadosGroup" class="mt-2 relative group">
+          <button id="resultadosToggle" type="button" class="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-100 focus:bg-gray-100">
+            <span class="font-semibold text-gray-700 text-lg">Resultados Votación</span>
+            <svg id="resultadosChevron" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-600 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div id="resultadosMenu" class="hidden flex flex-col mt-1">
+            <a href="resultados-portada.html" class="w-full block text-left px-6 py-3 hover:bg-gray-100 rounded-lg">Portada</a>
+            <a href="resultados-seccion1.html" class="w-full block text-left px-6 py-3 hover:bg-gray-100 rounded-lg">Sección 1</a>
           </div>
         </div>
         <a href="about.html" class="w-full block text-left px-4 py-3 hover:bg-indigo-50 rounded-lg font-medium text-lg">Acerca de nosotros</a>
@@ -52,9 +57,9 @@
 
     <main class="max-w-6xl mx-auto px-4 py-6">
       <div class="flex items-center justify-between mb-6">
-        <h2 id="sectionTitle" class="text-2xl font-semibold">2ª Sección</h2>
+        <h2 id="resultsTitle" class="text-2xl font-semibold">Resultados</h2>
       </div>
-      <div id="coversGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 sm:gap-6"></div>
+      <div id="resultsGrid"></div>
     </main>
 
     <div id="viewerModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-[9999]">
@@ -72,16 +77,6 @@
             <img id="viewerImage" class="mx-auto max-w-full h-auto max-h-[80vh] object-contain select-none transition-transform duration-200 ease-out" alt="Vista" />
           </div>
         </div>
-      </div>
-    </div>
-
-    <div id="infoPopup" class="fixed inset-0 hidden z-[9999] grid place-items-center bg-black/40">
-      <div class="bg-white shadow-lg rounded p-4 border max-w-md w-[90%]">
-        <div class="flex items-center justify-between mb-2">
-          <span class="font-medium text-lg">Información</span>
-          <button id="closeInfoBtn" class="p-1 rounded hover:bg-gray-100">✕</button>
-        </div>
-        <ul id="infoList" class="text-sm text-gray-700 space-y-1"></ul>
       </div>
     </div>
 

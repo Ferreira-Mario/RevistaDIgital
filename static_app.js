@@ -34,6 +34,9 @@ window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu();
 const bocetosToggle = document.getElementById('bocetosToggle');
 const bocetosMenu = document.getElementById('bocetosMenu');
 const bocetosChevron = document.getElementById('bocetosChevron');
+const resultadosToggle = document.getElementById('resultadosToggle');
+const resultadosMenu = document.getElementById('resultadosMenu');
+const resultadosChevron = document.getElementById('resultadosChevron');
 function toggleBocetos() {
   if (!bocetosMenu || !bocetosChevron) return;
   const open = !bocetosMenu.classList.contains('hidden');
@@ -46,6 +49,18 @@ function toggleBocetos() {
   }
 }
 if (bocetosToggle) bocetosToggle.addEventListener('click', toggleBocetos);
+function toggleResultados() {
+  if (!resultadosMenu || !resultadosChevron) return;
+  const open = !resultadosMenu.classList.contains('hidden');
+  if (open) {
+    resultadosMenu.classList.add('hidden');
+    resultadosChevron.style.transform = '';
+  } else {
+    resultadosMenu.classList.remove('hidden');
+    resultadosChevron.style.transform = 'rotate(180deg)';
+  }
+}
+if (resultadosToggle) resultadosToggle.addEventListener('click', toggleResultados);
 
 // Navegación dentro del menú lateral (no romper si no existe)
 if (sideMenu) {
@@ -98,6 +113,9 @@ document.addEventListener('DOMContentLoaded', () => {
   route();
   const sectionAttr = (document.body && document.body.dataset) ? document.body.dataset.section : '';
   if (sectionAttr) renderSection(sectionAttr);
+  const resultsGrid = document.getElementById('resultsGrid');
+  const resultsSection = (document.body && document.body.dataset) ? document.body.dataset.section : '';
+  if (resultsGrid && resultsSection) renderResults(resultsSection);
 });
 
 function lsGet(key, fallback = null) {
@@ -203,11 +221,11 @@ async function renderSection(sectionId) {
   sectionTitleEl.textContent = sectionNames[sectionId] || 'Bocetos';
   coversGrid.innerHTML = '';
 
-  // NUEVO: Portada por imágenes del índice
-  if (sectionId === 'portada') {
-    const items = await loadImageItems();
+  // NUEVO: Portada y Sección 1 por imágenes del índice
+  if (sectionId === 'portada' || sectionId === 'seccion1') {
+    const items = await loadImageItems(sectionId);
     if (!items.length) {
-      coversGrid.innerHTML = `<div class="text-center py-10 text-gray-500 col-span-full">No hay imágenes. Edita <code>data/img_index.json</code> o <code>data/portadas.json</code>, y coloca archivos en <code>Imagenes/Portadas/img</code>.</div>`;
+      coversGrid.innerHTML = `<div class="text-center py-10 text-gray-500 col-span-full">No hay imágenes. Edita <code>data/${sectionId}_index.json</code> o <code>data/portadas.json</code>. Coloca archivos en <code>Imagenes/Bocetos/${sectionId}</code> (o <code>bocetos/${sectionId}</code> por compatibilidad).</div>`;
       return;
     }
 
@@ -245,7 +263,7 @@ async function renderSection(sectionId) {
       coversGrid.appendChild(card);
 
       // Guarda datos para la delegación
-      card.dataset.scope = 'portada';
+      card.dataset.scope = sectionId;
       card.dataset.file = file;
       card.dataset.author = authorName;
       card.dataset.title = title;
@@ -415,6 +433,7 @@ async function renderSection(sectionId) {
     });
 
     voteBtn.addEventListener('click', async () => {
+      if (!isVotingOpen(sectionId)) { showVotingLock(sectionId); return; }
       try {
         voteBtn.disabled = true;
         const newVotes = await toggleVoteWithUserLock(cover.id);
@@ -515,9 +534,19 @@ function encodePathVariantsList(path) {
 // getImageCandidates(cover)
 function getImageCandidates(cover) {
   const DIRS = [
+    './IMGs/Bocetos/portada',
+    './IMGs/Bocetos/seccion1',
+    './IMGs/Bocetos/Sección 1',
+    './imgs/Bocetos/portada',
+    './imgs/Bocetos/seccion1',
+    './imgs/Bocetos/Sección 1',
+    './Imagenes/Bocetos/Sección 1',
+    './IMGs/Portadas/img',
+    './imgs/Portadas/img',
+    './bocetos/portada',
+    './bocetos/seccion1',
     './Imagenes/Portadas/img',
     './Imagagenes/Portadas/img',
-    // compat por si quedan archivos antiguos
     './pdfs/Portadas/img'
   ];
 
@@ -738,13 +767,14 @@ async function toggleVoteWithUserLock(coverId) {
 }
 
 // Cargar índice de imágenes para Portada
-async function loadImgIndex() {
+async function loadSectionIndex(sectionId) {
+  const file = `./data/${sectionId}_index.json`;
   try {
-    const res = await fetch('./data/img_index.json');
-    if (!res.ok) throw new Error('No se pudo cargar img_index.json');
+    const res = await fetch(file);
+    if (!res.ok) throw new Error(`No se pudo cargar ${sectionId}_index.json`);
     return await res.json();
   } catch (e) {
-    console.warn('img_index.json no disponible:', e);
+    console.warn(`${sectionId}_index.json no disponible:`, e);
     return [];
   }
 }
@@ -833,11 +863,23 @@ function makeFileCandidates(fileName) {
 
 // Resuelve la primera URL válida probando múltiples directorios
 async function resolveImageFromDirs(fileName, authorName, titleHint) {
-    const DIRS = [
-      './Imagenes/Portadas/img',
-      './Imagagenes/Portadas/img',
-      './pdfs/Portadas/img'
-    ];
+  const DIRS = [
+    './IMGs/Bocetos/Portadas',
+    './IMGs/Bocetos/seccion1',
+    './IMGs/Bocetos/Sección 1',
+    './imgs/Bocetos/Portadas',
+    './imgs/Bocetos/seccion1',
+    './imgs/Bocetos/Sección 1',
+    './Imagenes/Bocetos/Portadas',
+    './Imagenes/Bocetos/Sección 1',
+    './IMGs/Portadas/img',
+    './imgs/Portadas/img',
+    './bocetos/portada',
+    './bocetos/seccion1',
+    './Imagenes/Portadas/img',
+    './Imagagenes/Portadas/img',
+    './pdfs/Portadas/img'
+  ];
 
     const MAP_OVERRIDES = {
       'emilio garcia': ['Emilio García.png'],
@@ -847,6 +889,8 @@ async function resolveImageFromDirs(fileName, authorName, titleHint) {
       'luciano perez': ['Luciano Pérez.png'],
       'mateo garduno': ['Mateo Garduño .png', 'Mateo Garduño.png'],
       'yael nolasco': ['Yael Nolasco .png', 'Yael Nolasco.png'],
+      'joel hernandez': ['Joel Hernández.png', 'Joel_Hernandez.png'],
+      'vanessa bernabe': ['Vanessa Bernabé.png', 'Vanessa_Bernabe.png']
     };
 
     const bases = [fileName, authorName, titleHint].filter(Boolean);
@@ -857,36 +901,47 @@ async function resolveImageFromDirs(fileName, authorName, titleHint) {
     const key = String((authorName || fileName || titleHint) || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     const extraCandidates = MAP_OVERRIDES[key] || [];
 
-    const tried = [];
-    // Probar overrides primero
-    for (const dir of DIRS) {
-      for (const f of extraCandidates) {
-        for (const u of encodePathVariantsList(`${dir}/${f}`)) {
-          tried.push(u);
-          if (await probeImage(u)) return u;
-        }
+  const tried = [];
+  // Probar overrides primero
+  for (const dir of DIRS) {
+    for (const f of extraCandidates) {
+      for (const u of encodePathVariantsList(`${dir}/${f}`)) {
+        tried.push(u);
+        if (await probeImage(u)) return u;
       }
     }
+  }
 
+  // Intentar primero el nombre exacto provisto, antes de variantes
+  const exact = String(fileName || '').trim();
+  if (exact) {
     for (const dir of DIRS) {
-      for (const f of fileCandidates) {
-        for (const u of encodePathVariantsList(`${dir}/${f}`)) {
-          tried.push(u);
-          if (await probeImage(u)) return u;
-        }
+      for (const u of encodePathVariantsList(`${dir}/${exact}`)) {
+        tried.push(u);
+        if (await probeImage(u)) return u;
       }
     }
+  }
+
+  for (const dir of DIRS) {
+    for (const f of fileCandidates) {
+      for (const u of encodePathVariantsList(`${dir}/${f}`)) {
+        tried.push(u);
+        if (await probeImage(u)) return u;
+      }
+    }
+  }
     console.warn('Imagen no encontrada (probados primeros 20):', tried.slice(0, 20));
     return null;
 }
 
 // Fusiona fuentes: img_index.json + portadas.json (respaldo)
-async function loadImageItems() {
+async function loadImageItems(sectionId) {
   const items = [];
 
-  // 1) Desde img_index.json
+  // 1) Desde <section>_index.json
   try {
-    const idx = await loadImgIndex();
+    const idx = await loadSectionIndex(sectionId);
     for (const it of idx) {
       items.push({
         file: String(it.file || '').trim(),
@@ -898,19 +953,64 @@ async function loadImageItems() {
   } catch {}
 
   // 2) Respaldo: desde portadas.json
+  if (sectionId !== 'portada') {
+    try {
+      const res = await fetch('./data/portadas.json');
+      if (res.ok) {
+        const covers = await res.json();
+        for (const c of covers) {
+          if (String(c.section || '') !== sectionId) continue;
+          const fileCandidate = (c.imagePath ? c.imagePath.split('/').pop() : '') ||
+            (c.pdfPath ? c.pdfPath.split('/').pop().replace(/\.pdf$/i, '') : getTitleFromPath(c.title || ''));
+          items.push({
+            file: fileCandidate,
+            title: c.title || c.description || '',
+            author: c.author || '',
+            description: c.description || ''
+          });
+        }
+      }
+    } catch {}
+  }
+
+  // Fallback: si está en GitHub Pages, listar el directorio vía API
   try {
-    const res = await fetch('./data/portadas.json');
-    if (res.ok) {
-      const covers = await res.json();
-      for (const c of covers) {
-        const fileCandidate = (c.imagePath ? c.imagePath.split('/').pop() : '') ||
-          (c.pdfPath ? c.pdfPath.split('/').pop().replace(/\.pdf$/i, '') : getTitleFromPath(c.title || ''));
-        items.push({
-          file: fileCandidate,
-          title: c.title || c.description || '',
-          author: c.author || '',
-          description: c.description || ''
-        });
+    const host = String(window.location.hostname || '');
+    if (host.endsWith('.github.io')) {
+      const owner = host.replace('.github.io','');
+      const pathParts = String(window.location.pathname || '/').split('/').filter(Boolean);
+      let repoCandidates = Array.from(new Set([pathParts[0] || '', pathParts[1] || ''].filter(Boolean)));
+      if (!repoCandidates.length) repoCandidates = [`${owner}.github.io`];
+      if (owner && repoCandidates.length) {
+        const dirsToScan = [
+          `IMGs/Bocetos/${sectionId}`,
+          `imgs/Bocetos/${sectionId}`,
+          `Imagenes/Bocetos/${sectionId}`,
+          sectionId === 'seccion1' ? 'IMGs/Bocetos/Sección 1' : null,
+          sectionId === 'seccion1' ? 'imgs/Bocetos/Sección 1' : null,
+          sectionId === 'seccion1' ? 'Imagenes/Bocetos/Sección 1' : null,
+          sectionId === 'portada' ? 'IMGs/Bocetos/Portadas' : null,
+          sectionId === 'portada' ? 'imgs/Bocetos/Portadas' : null,
+          sectionId === 'portada' ? 'Imagenes/Bocetos/Portadas' : null,
+          sectionId === 'portada' ? 'IMGs/Portadas/img' : null,
+          sectionId === 'portada' ? 'imgs/Portadas/img' : null,
+          sectionId === 'portada' ? 'Imagenes/Portadas/img' : null
+        ].filter(Boolean);
+        for (const repo of repoCandidates) {
+          for (const dir of dirsToScan) {
+            const api = `https://api.github.com/repos/${owner}/${repo}/contents/${dir}`;
+            const res = await fetch(encodeURI(api), { headers: { 'Accept': 'application/vnd.github+json' } });
+            if (res.ok) {
+              const list = await res.json();
+              for (const entry of list) {
+                if (!entry || entry.type !== 'file') continue;
+                const name = entry.name || '';
+                if (!/\.(png|jpe?g|webp)$/i.test(name)) continue;
+                items.push({ file: name, title: getTitleFromPath(name), author: getTitleFromPath(name), description: '' });
+              }
+            }
+          }
+        }
       }
     }
   } catch {}
@@ -923,15 +1023,14 @@ async function loadImageItems() {
     .replace(/\s+/g, ' ').trim().toLowerCase();
 
   return items.filter(it => {
-    // Dedup por autor normalizado para evitar duplicados de "Joel Hernández"
-    const authorKey = norm(it.author || it.file || '');
-    const fileKey = (it.file || '').toLowerCase();
     const isPlaceholder =
       placeholderAuthors.has(String(it.author || '').trim()) ||
       placeholderTitles.has(String(it.title || '').trim());
     if (isPlaceholder) return false;
-    if (seen.has(authorKey)) return false;
-    seen.add(authorKey);
+    // Dedup por archivo (permite variantes "1"/"2" del mismo autor)
+    const fileKey = norm(it.file || '');
+    if (seen.has(fileKey)) return false;
+    seen.add(fileKey);
     return true;
   });
 }
@@ -942,7 +1041,7 @@ document.addEventListener('click', async (ev) => {
   if (!btn) return;
 
   const card = btn.closest('article');
-  if (!card || card.dataset.scope !== 'portada') return;
+  if (!card || !card.dataset.scope) return;
 
   const action = btn.dataset.action;
   const file = card.dataset.file || '';
@@ -970,6 +1069,8 @@ document.addEventListener('click', async (ev) => {
   }
 
   if (action === 'vote') {
+    const sectionScope = card.dataset.scope || '';
+    if (!isVotingOpen(sectionScope)) { showVotingLock(sectionScope); return; }
     btn.disabled = true;
     try {
       const newVotes = await toggleVoteWithUserLock(coverId);
@@ -1009,3 +1110,132 @@ function applyTheme(theme) {
     });
   }
 })();
+
+function getNextVotingTime() {
+  const now = new Date();
+  let year = now.getFullYear();
+  const nov = 10;
+  if (now.getMonth() > nov) year += 1;
+  const base = new Date(year, nov, 1, 11, 20, 0, 0);
+  if (now.getMonth() < nov) {
+    const dow = base.getDay();
+    const add = (2 - dow + 7) % 7; // 2 = martes
+    base.setDate(1 + add);
+    return base;
+  }
+  if (now.getMonth() === nov) {
+    const d = new Date(now.getFullYear(), nov, now.getDate(), 11, 20, 0, 0);
+    let tues = new Date(d);
+    const dow = d.getDay();
+    const add = (2 - dow + 7) % 7;
+    tues.setDate(d.getDate() + add);
+    if (tues < now) tues.setDate(tues.getDate() + 7);
+    return tues;
+  }
+  return base;
+}
+
+function isVotingOpen(sectionId) {
+  const target = getNextVotingTime();
+  return new Date() >= target;
+}
+
+function showVotingLock(sectionId) {
+  const lock = document.getElementById('voteLock');
+  const countdownEl = document.getElementById('voteCountdown');
+  if (!lock || !countdownEl) return;
+  if (sectionId !== 'seccion1' && sectionId !== 'portada') { lock.classList.add('hidden'); return; }
+  const target = getNextVotingTime();
+  lock.classList.remove('hidden');
+  let active = true;
+  const closeVotingLock = () => { active = false; lock.classList.add('hidden'); };
+  const closeBtn = document.getElementById('closeVoteLockBtn');
+  if (closeBtn) closeBtn.onclick = closeVotingLock;
+  lock.addEventListener('click', (e) => { if (e.target === lock) closeVotingLock(); });
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeVotingLock(); }, { once: true });
+  const tick = () => {
+    if (!active) return;
+    const now = new Date();
+    let diff = target - now;
+    if (diff <= 0) {
+      countdownEl.textContent = '00:00:00';
+      closeVotingLock();
+      return;
+    }
+    const d = Math.floor(diff / 86400000);
+    diff %= 86400000;
+    const h = Math.floor(diff / 3600000);
+    diff %= 3600000;
+    const m = Math.floor(diff / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    const pad = (n) => String(n).padStart(2, '0');
+    countdownEl.textContent = (d > 0 ? `${d}d ` : '') + `${pad(h)}:${pad(m)}:${pad(s)}`;
+    requestAnimationFrame(() => setTimeout(tick, 250));
+  };
+  tick();
+}
+async function renderResults(sectionId) {
+  const resultsGrid = document.getElementById('resultsGrid');
+  const titleEl = document.getElementById('resultsTitle');
+  if (!resultsGrid) return;
+  if (titleEl) titleEl.textContent = (sectionId === 'portada') ? 'Resultados Portada' : 'Resultados Sección 1';
+  resultsGrid.innerHTML = '';
+
+  const items = await loadImageItems(sectionId);
+  if (!items.length) {
+    resultsGrid.innerHTML = '<div class="text-center py-10 text-gray-500">No hay elementos para calcular resultados</div>';
+    return;
+  }
+
+  const entries = [];
+  for (const it of items) {
+    const file = String(it.file || '').trim();
+    const authorName = it.author || getTitleFromPath(file);
+    const coverId = `img_${getTitleFromPath(file).toLowerCase().replace(/\s+/g, '_')}`;
+    let count = 0;
+    try { count = await getVoteCount(coverId); } catch {}
+    const localCount = Number(lsGet(`votes_local_${coverId}`, '0'));
+    entries.push({ file, author: authorName, coverId, votes: Math.max(Number(count || 0), localCount) });
+  }
+
+  entries.sort((a,b) => b.votes - a.votes);
+  const podium = entries.slice(0,3);
+
+  const layout = document.createElement('div');
+  layout.className = 'grid grid-cols-1 sm:grid-cols-3 gap-6 items-end';
+
+  function podiumCard(entry, rank) {
+    const card = document.createElement('div');
+    const sizeClass = rank === 1 ? 'sm:col-span-1 sm:order-2' : (rank === 2 ? 'sm:order-1' : 'sm:order-3');
+    card.className = `bg-white rounded-xl shadow p-4 text-center ${sizeClass}`;
+    const crown = rank === 1 ? '🥇' : (rank === 2 ? '🥈' : '🥉');
+    card.innerHTML = `
+      <div class="text-3xl">${crown}</div>
+      <h3 class="text-xl font-bold mt-2">${entry.author}</h3>
+      <p class="text-gray-600">${getTitleFromPath(entry.file)}</p>
+      <div class="mt-3 text-2xl font-extrabold text-indigo-600">${entry.votes} votos</div>
+      <div class="mt-4 flex justify-center">
+        <button class="btn-primary" data-action="view" data-file="${entry.file}" data-author="${entry.author}">Ver</button>
+      </div>
+    `;
+    layout.appendChild(card);
+  }
+
+  if (podium.length) {
+    podium.forEach((e, i) => podiumCard(e, i+1));
+  } else {
+    layout.innerHTML = '<div class="text-center text-gray-500">Sin votos</div>';
+  }
+
+  resultsGrid.appendChild(layout);
+
+  layout.addEventListener('click', async (ev) => {
+    const btn = ev.target.closest('[data-action="view"]');
+    if (!btn) return;
+    const file = btn.getAttribute('data-file') || '';
+    const author = btn.getAttribute('data-author') || '';
+    const url = await resolveImageFromDirs(file, author, getTitleFromPath(file));
+    if (!url) { alert('No se pudo abrir la imagen.'); return; }
+    openImageViewer(url, author);
+  });
+}
