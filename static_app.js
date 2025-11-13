@@ -116,6 +116,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const resultsGrid = document.getElementById('resultsGrid');
   const resultsSection = (document.body && document.body.dataset) ? document.body.dataset.section : '';
   if (resultsGrid && resultsSection) renderResults(resultsSection);
+  const siteLogo = document.getElementById('siteLogo');
+  const logoId = (window && window.siteLogoDriveId) ? window.siteLogoDriveId : '';
+  const onGithub = String(window.location.hostname || '').endsWith('.github.io');
+  if (siteLogo && onGithub && logoId) {
+    const dUrl = resolveDriveUrl(logoId);
+    if (dUrl) siteLogo.src = dUrl;
+  }
 });
 
 function lsGet(key, fallback = null) {
@@ -504,6 +511,22 @@ function resolveImageUrl(path) {
   } catch {
     return path;
   }
+}
+function extractDriveId(input) {
+  try {
+    const s = String(input || '').trim();
+    if (!s) return '';
+    const m1 = s.match(/\/file\/d\/([^/]+)\//);
+    if (m1 && m1[1]) return m1[1];
+    const m2 = s.match(/[?&]id=([^&]+)/);
+    if (m2 && m2[1]) return m2[1];
+    if (/^[\w-]+$/.test(s)) return s;
+    return '';
+  } catch { return ''; }
+}
+function resolveDriveUrl(idOrUrl) {
+  const id = extractDriveId(idOrUrl);
+  return id ? `https://drive.google.com/uc?export=view&id=${encodeURIComponent(id)}` : '';
 }
 
 function encodePathVariantsList(path) {
