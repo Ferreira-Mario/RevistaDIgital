@@ -273,8 +273,14 @@ async function renderSection(sectionId) {
       const miniEl = card.querySelector('[data-role="mini"]');
       const votesEl = card.querySelector('[data-role="votes"]');
 
-      // Resuelve y carga imagen
-      const imgUrl = await resolveImageFromDirs(file, authorName, title);
+      // Resuelve y carga imagen (Drive primero si hay driveId)
+      let imgUrl = null;
+      if (item && item.driveId) {
+        const dUrl = resolveDriveUrl(item.driveId);
+        if (dUrl && await probeImage(dUrl)) imgUrl = dUrl;
+        card.dataset.driveId = String(item.driveId || '').trim();
+      }
+      if (!imgUrl) imgUrl = await resolveImageFromDirs(file, authorName, title);
       if (imgUrl) {
           thumbEl.src = imgUrl;
           miniEl.src = imgUrl;
@@ -939,6 +945,23 @@ async function resolveImageFromDirs(fileName, authorName, titleHint) {
 async function loadImageItems(sectionId) {
   const items = [];
 
+  // 0) Desde drive_<section>_index.json
+  try {
+    const resD = await fetch(`./data/drive_${sectionId}_index.json`);
+    if (resD.ok) {
+      const driveItems = await resD.json();
+      for (const it of driveItems) {
+        items.push({
+          driveId: String(it.driveId || '').trim(),
+          file: String(it.file || '').trim(),
+          title: it.title || '',
+          author: it.author || '',
+          description: it.description || ''
+        });
+      }
+    }
+  } catch {}
+
   // 1) Desde <section>_index.json
   try {
     const idx = await loadSectionIndex(sectionId);
@@ -1015,7 +1038,7 @@ async function loadImageItems(sectionId) {
     }
   } catch {}
   const seen = new Set();
-  const placeholderAuthors = new Set(['Nombre de la persona autora', 'Otra persona autora']);
+  const placeholderAuthors = new Set(['Nombre de la persona autora', 'Otra persona autora', 'Nombre']);
   const placeholderTitles = new Set(['Portada informativa', 'Portada genérica']);
 
   const norm = (s) => String(s || '')
@@ -1062,7 +1085,14 @@ document.addEventListener('click', async (ev) => {
 
   if (action === 'view') {
     let fullUrl = card.dataset.imageUrl;
-    if (!fullUrl) fullUrl = await resolveImageFromDirs(file, author, title);
+    if (!fullUrl) {
+      const dId = card.dataset.driveId || '';
+      if (dId) {
+        const dUrl = resolveDriveUrl(dId);
+        if (dUrl && await probeImage(dUrl)) fullUrl = dUrl;
+      }
+      if (!fullUrl) fullUrl = await resolveImageFromDirs(file, author, title);
+    }
     if (!fullUrl) { alert('No se pudo abrir la imagen.'); return; }
     openImageViewer(fullUrl, title);
     return;
