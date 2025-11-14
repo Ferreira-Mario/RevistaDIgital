@@ -221,11 +221,12 @@ const sectionNames = {
   seccion5: '5ª Sección',
 };
 async function renderSection(sectionId) {
+  if (!coversGrid) return;
   // Cancelar suscripciones previas antes de renderizar
   for (const unsub of voteUnsubs.values()) { try { unsub(); } catch {} }
   voteUnsubs.clear();
 
-  sectionTitleEl.textContent = sectionNames[sectionId] || 'Bocetos';
+  if (sectionTitleEl) sectionTitleEl.textContent = sectionNames[sectionId] || 'Bocetos';
   coversGrid.innerHTML = '';
 
   // NUEVO: Portada y Sección 1 por imágenes del índice
@@ -245,24 +246,24 @@ async function renderSection(sectionId) {
       const card = document.createElement('article');
       card.className = 'group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow min-h-[340px]';
       card.innerHTML = `
-        <div class="h-48 sm:h-64 bg-gray-100 overflow-hidden relative" data-role="header">
+        <div class="h-56 sm:h-72 bg-gray-100 overflow-hidden relative" data-role="header">
           <img alt="Miniatura de ${displayTitle}" loading="lazy"
                class="w-full h-full object-cover transform transition-transform duration-300 ease-out group-hover:scale-110"
                data-role="thumb">
         </div>
         <div class="p-6">
-          <h3 class="text-xl font-bold mb-1">${authorName}</h3>
+          <h3 class="text-2xl sm:text-3xl font-bold mb-1">${authorName}</h3>
           <p class="text-gray-600 mb-4 line-clamp-2">${displayTitle}</p>
-          <div class="grid grid-cols-3 gap-2 mt-4 items-stretch">
-            <button class="btn-outline flex-1 min-h-[42px] text-sm sm:text-base whitespace-nowrap" data-action="info">Info</button>
-            <button class="btn-primary flex-1 min-h-[42px] text-sm sm:text-base whitespace-nowrap flex items-center justify-center gap-2" data-action="view">
-              <img alt="" class="w-5 h-5 sm:w-6 sm:h-6 rounded object-cover" data-role="mini" style="pointer-events:none; display:inline-block;">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 items-stretch">
+            <button class="btn-outline flex-1 px-5 py-3 min-h-[48px] text-base sm:text-lg whitespace-nowrap" data-action="info">Info</button>
+            <button class="btn-primary flex-1 px-5 py-3 min-h-[48px] text-base sm:text-lg whitespace-nowrap flex items-center justify-center gap-2" data-action="view">
+              <img alt="" class="w-6 h-6 sm:w-7 sm:h-7 rounded object-cover" data-role="mini" style="pointer-events:none; display:inline-block;">
               Ver
             </button>
-            <button class="btn-danger flex-1 min-h-[42px] text-sm sm:text-base whitespace-nowrap" data-action="vote">Votar</button>
+            <button class="btn-danger flex-1 px-5 py-3 min-h-[48px] text-base sm:text-lg whitespace-nowrap" data-action="vote">Votar</button>
           </div>
           <div class="text-center mt-2">
-            <span class="text-2xl font-bold text-brand" data-role="votes">0</span>
+            <span class="text-3xl sm:text-4xl font-bold text-brand" data-role="votes">0</span>
             <span class="text-gray-500 ml-2">votos</span>
           </div>
         </div>
@@ -365,24 +366,24 @@ async function renderSection(sectionId) {
     const card = document.createElement('article');
     card.className = 'group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow';
     card.innerHTML = `
-      <div class="h-48 sm:h-64 bg-gray-100 overflow-hidden relative" data-role="header">
+      <div class="h-56 sm:h-72 bg-gray-100 overflow-hidden relative" data-role="header">
         <img alt="Miniatura de ${titleDetected}" loading="lazy"
              class="w-full h-full object-cover transform transition-transform duration-300 ease-out group-hover:scale-110"
              data-role="thumb">
       </div>
       <div class="p-6">
-        <h3 class="text-xl font-bold mb-2">${titleDetected}</h3>
+        <h3 class="text-2xl sm:text-3xl font-bold mb-2">${titleDetected}</h3>
         <p class="text-gray-600 mb-4 line-clamp-2">${cover.description || ''}</p>
-        <div class="grid grid-cols-3 gap-2 mb-4 items-stretch">
-          <button class="flex-1 px-4 min-h-[42px] bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm sm:text-base whitespace-nowrap" data-action="info">Info</button>
-          <button class="flex-1 px-4 min-h-[42px] bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap" data-action="view">
-            <img alt="" class="w-5 h-5 sm:w-6 sm:h-6 rounded object-cover" data-role="mini">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 items-stretch">
+          <button class="flex-1 px-5 py-3 min-h-[48px] bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-base sm:text-lg whitespace-nowrap" data-action="info">Info</button>
+          <button class="flex-1 px-5 py-3 min-h-[48px] bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 text-base sm:text-lg whitespace-nowrap" data-action="view">
+            <img alt="" class="w-6 h-6 sm:w-7 sm:h-7 rounded object-cover" data-role="mini">
             Ver
           </button>
-          <button class="flex-1 px-4 min-h-[42px] bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm sm:text-base whitespace-nowrap" data-action="vote">Votar</button>
+          <button class="flex-1 px-5 py-3 min-h-[48px] bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-base sm:text-lg whitespace-nowrap" data-action="vote">Votar</button>
         </div>
         <div class="text-center">
-          <span class="text-2xl font-bold text-indigo-600" data-role="votes">0</span>
+          <span class="text-3xl sm:text-4xl font-bold text-indigo-600" data-role="votes">0</span>
           <span class="text-gray-500 ml-2">votos</span>
         </div>
       </div>
@@ -1438,6 +1439,7 @@ async function renderResults(sectionId) {
   if (!resultsGrid) return;
   if (titleEl) titleEl.textContent = (sectionId === 'portada') ? 'Resultados Portada' : 'Resultados Sección 1';
   resultsGrid.innerHTML = '';
+  resultsGrid.className = 'min-h-[60vh] flex items-center justify-center';
 
   const items = await loadImageItems(sectionId);
   if (!items.length) {
@@ -1450,32 +1452,45 @@ async function renderResults(sectionId) {
     const file = String(it.file || '').trim();
     const authorName = it.author || getTitleFromPath(file);
     const coverId = `img_${getTitleFromPath(file).toLowerCase().replace(/\s+/g, '_')}`;
-    let count = 0;
-    try { count = await getVoteCount(coverId); } catch {}
     const localCount = Number(lsGet(`votes_local_${coverId}`, '0'));
     const driveId = String(it.driveId || extractDriveId(it.driveUrl || '') || '').trim();
-    entries.push({ file, author: authorName, coverId, votes: Math.max(Number(count || 0), localCount), driveId });
+    entries.push({ file, author: authorName, coverId, votes: localCount, driveId });
   }
-
   entries.sort((a,b) => b.votes - a.votes);
-  const podium = entries.slice(0,3);
+  const candidates = entries.slice(0, 10);
+  async function safeGetVoteCount(id, timeoutMs = 1500) {
+    try {
+      return await Promise.race([
+        getVoteCount(id),
+        new Promise((resolve) => setTimeout(() => resolve(0), timeoutMs))
+      ]);
+    } catch { return 0; }
+  }
+  const remoteCounts = await Promise.all(candidates.map(e => safeGetVoteCount(e.coverId)));
+  for (let i = 0; i < candidates.length; i++) {
+    const rc = Number(remoteCounts[i] || 0);
+    candidates[i].votes = Math.max(candidates[i].votes, rc);
+  }
+  candidates.sort((a,b) => b.votes - a.votes);
+  const podium = candidates.slice(0,3);
 
   const layout = document.createElement('div');
-  layout.className = 'grid grid-cols-1 sm:grid-cols-3 gap-6 items-end';
+  layout.className = 'grid grid-cols-1 sm:grid-cols-3 gap-8 items-end max-w-6xl mx-auto py-8';
 
   function podiumCard(entry, rank) {
     const card = document.createElement('div');
     const sizeClass = rank === 1 ? 'sm:col-span-1 sm:order-2' : (rank === 2 ? 'sm:order-1' : 'sm:order-3');
-    card.className = `bg-white rounded-xl shadow p-4 text-center ${sizeClass}`;
+    card.className = `bg-white rounded-2xl shadow-lg p-6 sm:p-8 text-center ${sizeClass}`;
     const crown = rank === 1 ? '🥇' : (rank === 2 ? '🥈' : '🥉');
     const dUrl = entry.driveId ? resolveDriveUrl(entry.driveId) : '';
+    const titleLabel = `${sectionNames[sectionId] || sectionId} (boceto)`;
     card.innerHTML = `
-      <div class="text-3xl">${crown}</div>
-      <h3 class="text-xl font-bold mt-2">${entry.author}</h3>
-      <p class="text-gray-600">${getTitleFromPath(entry.file)}</p>
-      <div class="mt-3 text-2xl font-extrabold text-indigo-600">${entry.votes} votos</div>
+      <div class="text-6xl sm:text-7xl">${crown}</div>
+      <h3 class="text-2xl sm:text-3xl font-bold mt-3">${entry.author}</h3>
+      <p class="text-gray-600">${titleLabel}</p>
+      <div class="mt-4 text-3xl sm:text-4xl font-extrabold text-indigo-600">${entry.votes} votos</div>
       <div class="mt-4 flex justify-center">
-        <button class="btn-primary" data-action="view" data-file="${entry.file}" data-author="${entry.author}" data-drive-id="${entry.driveId || ''}" data-image-url="${dUrl}">Ver</button>
+        <button class="btn-primary text-lg px-6 py-3" data-action="view" data-file="${entry.file}" data-author="${entry.author}" data-drive-id="${entry.driveId || ''}" data-image-url="${dUrl}">Ver</button>
       </div>
     `;
     layout.appendChild(card);
@@ -1499,7 +1514,8 @@ async function renderResults(sectionId) {
     let url = dUrlAttr || (dId ? resolveDriveUrl(dId) : '');
     if (!url) url = await resolveImageFromDirs(file, author, getTitleFromPath(file));
     if (!url) { alert('No se pudo abrir la imagen.'); return; }
-    openImageViewer(url, author);
+    const titleLabel = `${sectionNames[sectionId] || sectionId} (boceto)`;
+    openImageViewer(url, titleLabel);
   });
 }
 const DRIVE_ONLY = true;
