@@ -195,16 +195,9 @@ let coversCache = [];
 async function loadCovers() {
   if (coversCache.length) return coversCache;
   try {
-    const urls = ['./portadas.json', './data/portadas.json'];
-    let ok = null;
-    for (const u of urls) {
-      try {
-        const r = await fetch(u);
-        if (r.ok) { ok = r; break; }
-      } catch {}
-    }
-    if (!ok) throw new Error('No se pudo cargar portadas.json');
-    coversCache = await ok.json();
+    const r = await fetch('./portadas.json');
+    if (!r.ok) throw new Error('No se pudo cargar portadas.json');
+    coversCache = await r.json();
   } catch (e) {
     // Fallback de ejemplo
     coversCache = [
@@ -851,7 +844,7 @@ async function toggleVoteWithUserLock(coverId) {
 
 // Cargar índice de imágenes para Portada
 async function loadSectionIndex(sectionId) {
-  const urls = [`./${sectionId}_index.json`, `./data/${sectionId}_index.json`];
+  const urls = [`./${sectionId}_index.json`];
   for (const u of urls) {
     try {
       const res = await fetch(u);
@@ -1024,7 +1017,7 @@ async function loadImageItems(sectionId) {
 
   // 0) Desde drive_<section>_index.json (raíz o /data)
   try {
-    const driveItems = await fetchFirstJSON([`./drive_${sectionId}_index.json`, `./data/drive_${sectionId}_index.json`]);
+    const driveItems = await fetchFirstJSON([`./drive_${sectionId}_index.json`]);
     for (const it of driveItems) {
       items.push({
         driveId: String(it.driveId || '').trim(),
@@ -1068,16 +1061,9 @@ async function loadImageItems(sectionId) {
   // 2) Respaldo: desde portadas.json
   if (sectionId !== 'portada') {
     try {
-      const urls = ['./portadas.json', './data/portadas.json'];
-      let ok = null;
-      for (const u of urls) {
-        try {
-          const r = await fetch(u);
-          if (r.ok) { ok = r; break; }
-        } catch {}
-      }
-      if (ok) {
-        const covers = await ok.json();
+      const r = await fetch('./portadas.json');
+      if (r.ok) {
+        const covers = await r.json();
         for (const c of covers) {
           if (String(c.section || '') !== sectionId) continue;
           const fileCandidate = (c.imagePath ? c.imagePath.split('/').pop() : '') ||
