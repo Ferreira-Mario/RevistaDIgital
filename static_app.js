@@ -1016,21 +1016,18 @@ async function resolveImageFromDirs(fileName, authorName, titleHint) {
 async function loadImageItems(sectionId) {
   const items = [];
 
-  // 0) Desde drive_<section>_index.json
+  // 0) Desde drive_<section>_index.json (raíz o /data)
   try {
-    const resD = await fetch(`./data/drive_${sectionId}_index.json`);
-    if (resD.ok) {
-      const driveItems = await resD.json();
-      for (const it of driveItems) {
-        items.push({
-          driveId: String(it.driveId || '').trim(),
-          driveUrl: String(it.driveUrl || '').trim(),
-          file: String(it.file || '').trim(),
-          title: it.title || '',
-          author: it.author || '',
-          description: it.description || ''
-        });
-      }
+    const driveItems = await fetchFirstJSON([`./drive_${sectionId}_index.json`, `./data/drive_${sectionId}_index.json`]);
+    for (const it of driveItems) {
+      items.push({
+        driveId: String(it.driveId || '').trim(),
+        driveUrl: String(it.driveUrl || '').trim(),
+        file: String(it.file || '').trim(),
+        title: it.title || '',
+        author: it.author || '',
+        description: it.description || ''
+      });
     }
   } catch {}
 
