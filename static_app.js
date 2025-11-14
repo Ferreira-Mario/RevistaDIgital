@@ -506,6 +506,7 @@ function resolveImageUrl(path) {
   if (!path) return '';
   try {
     const trimmed = String(path).trim().replace(/\s+/g, ' ');
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
     let base = trimmed;
     let prefix = '';
     if (base.startsWith('./')) { prefix = './'; base = base.slice(2); }
@@ -838,6 +839,7 @@ function getTitleFromPath(path) {
     try {
       // Usa codificación segura sin doble-encode
       const encoded = resolveImageUrl(url);
+      viewerImage.referrerPolicy = 'no-referrer';
       viewerImage.src = encoded;
       viewerTitle.textContent = titleHint || getTitleFromPath(encoded);
       imgScale = 1;
@@ -1466,13 +1468,14 @@ async function renderResults(sectionId) {
     const sizeClass = rank === 1 ? 'sm:col-span-1 sm:order-2' : (rank === 2 ? 'sm:order-1' : 'sm:order-3');
     card.className = `bg-white rounded-xl shadow p-4 text-center ${sizeClass}`;
     const crown = rank === 1 ? '🥇' : (rank === 2 ? '🥈' : '🥉');
+    const dUrl = entry.driveId ? resolveDriveUrl(entry.driveId) : '';
     card.innerHTML = `
       <div class="text-3xl">${crown}</div>
       <h3 class="text-xl font-bold mt-2">${entry.author}</h3>
       <p class="text-gray-600">${getTitleFromPath(entry.file)}</p>
       <div class="mt-3 text-2xl font-extrabold text-indigo-600">${entry.votes} votos</div>
       <div class="mt-4 flex justify-center">
-        <button class="btn-primary" data-action="view" data-file="${entry.file}" data-author="${entry.author}" data-drive-id="${entry.driveId || ''}">Ver</button>
+        <button class="btn-primary" data-action="view" data-file="${entry.file}" data-author="${entry.author}" data-drive-id="${entry.driveId || ''}" data-image-url="${dUrl}">Ver</button>
       </div>
     `;
     layout.appendChild(card);
@@ -1492,7 +1495,8 @@ async function renderResults(sectionId) {
     const file = btn.getAttribute('data-file') || '';
     const author = btn.getAttribute('data-author') || '';
     const dId = btn.getAttribute('data-drive-id') || '';
-    let url = dId ? resolveDriveUrl(dId) : '';
+    const dUrlAttr = btn.getAttribute('data-image-url') || '';
+    let url = dUrlAttr || (dId ? resolveDriveUrl(dId) : '');
     if (!url) url = await resolveImageFromDirs(file, author, getTitleFromPath(file));
     if (!url) { alert('No se pudo abrir la imagen.'); return; }
     openImageViewer(url, author);
