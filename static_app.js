@@ -232,7 +232,7 @@ async function renderSection(sectionId) {
   if (sectionId === 'portada' || sectionId === 'seccion1') {
     const items = await loadImageItems(sectionId);
     if (!items.length) {
-      coversGrid.innerHTML = `<div class="text-center py-10 text-gray-500 col-span-full">No hay imágenes. Edita <code>drive_${sectionId}_index.json</code> en la raíz y agrega los IDs de Drive.</div>`;
+      coversGrid.innerHTML = `<div class="text-center py-10 text-gray-500 col-span-full">No hay imágenes. Edita <code>drive_${sectionId}_index.json</code> en la raíz y agrega las URLs de Drive.</div>`;
       return;
     }
 
