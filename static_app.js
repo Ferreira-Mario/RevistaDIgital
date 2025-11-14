@@ -284,15 +284,11 @@ async function renderSection(sectionId) {
       const driveId = String(item && (item.driveId || extractDriveId(item.driveUrl || '')) || '').trim();
       const dUrl = driveId ? resolveDriveUrl(driveId) : '';
       card.dataset.driveId = driveId;
-      if (dUrl) {
-        thumbEl.src = dUrl;
-        thumbEl.addEventListener('load', () => { miniEl.src = thumbEl.src; });
-        card.dataset.imageUrl = dUrl;
-      } else {
-        thumbEl.style.display = 'none';
-        headerEl.className = 'h-48 sm:h-64 bg-gray-200 flex items-center justify-center text-gray-500';
-        headerEl.textContent = 'Imagen desde Drive requerida';
-      }
+      const candidates = [];
+      if (dUrl) candidates.push(dUrl);
+      candidates.push(...getAllCandidateUrls(file, authorName, title));
+      setImageSrcWithFallback(thumbEl, candidates, headerEl, card);
+      thumbEl.addEventListener('load', () => { miniEl.src = thumbEl.src; });
 
       // Votos iniciales y suscripción (con fallback local)
       const localKey = `votes_local_${coverId}`;
@@ -511,6 +507,8 @@ function extractDriveId(input) {
     if (!s) return '';
     const m1 = s.match(/\/file\/d\/([^/]+)\//);
     if (m1 && m1[1]) return m1[1];
+    const m1b = s.match(/\/drive\/folders\/([^/?#]+)/);
+    if (m1b && m1b[1]) return m1b[1];
     const m2 = s.match(/[?&]id=([^&]+)/);
     if (m2 && m2[1]) return m2[1];
     if (/^[\w-]+$/.test(s)) return s;
@@ -522,7 +520,51 @@ function resolveDriveUrl(idOrUrl) {
   return id ? `https://drive.google.com/uc?export=view&id=${encodeURIComponent(id)}` : '';
 }
 
-function getAllCandidateUrls(fileName, authorName, titleHint) { return []; }
+async function listDriveFolderFiles(folderId) {
+  try {
+    const apiKey = (window.firebaseConfig && window.firebaseConfig.apiKey) ? window.firebaseConfig.apiKey : (window.googleApiKey || '');
+    const fid = extractDriveId(folderId);
+    if (!apiKey || !fid) return [];
+    const q = encodeURIComponent(`'${fid}' in parents and trashed=false`);
+    const fields = encodeURIComponent('files(id,name,mimeType)');
+    const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=${fields}&pageSize=1000&key=${apiKey}`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json();
+    const files = Array.isArray(data.files) ? data.files : [];
+    return files.filter(f => /image\//.test(String(f.mimeType||''))).map(f => ({ id: f.id, name: f.name }));
+  } catch { return []; }
+}
+
+function getAllCandidateUrls(fileName, authorName, titleHint) {
+  if (DRIVE_ONLY && String(window.location.hostname || '').endsWith('.github.io')) return [];
+  const DIRS = [
+    './IMGs/Bocetos/Portadas',
+    './IMGs/Bocetos/Sección 1'
+  ];
+  const bases = [fileName, authorName, titleHint].filter(Boolean);
+  const fileCandidates = Array.from(new Set(bases.flatMap((b)=> makeFileCandidates(String(b||'').trim()))));
+  const urls = [];
+  const pushEnc = (p) => { for (const u of encodePathVariantsList(p)) urls.push(u); };
+  const MAP_OVERRIDES = {
+    'emilio garcia': ['Emilio García.png'],
+    'fernando gonzalez': ['Fernando González.png'],
+    'fatima ramirez': ['Fátima Ramírez.png'],
+    'gabriel de jesus': ['Gabriel de Jesús.png'],
+    'luciano perez': ['Luciano Pérez.png'],
+    'mateo garduno': ['Mateo Garduño .png','Mateo Garduño.png'],
+    'yael nolasco': ['Yael Nolasco .png','Yael Nolasco.png'],
+    'joel hernandez': ['Joel Hernández.png','Joel_Hernandez.png'],
+    'vanessa bernabe': ['Vanessa Bernabé.png','Vanessa_Bernabe.png']
+  };
+  const key = String((authorName||fileName||titleHint)||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const extra = MAP_OVERRIDES[key]||[];
+  for (const d of DIRS) for (const f of extra) pushEnc(`${d}/${f}`);
+  const exact = String(fileName||'').trim();
+  if (exact) for (const d of DIRS) pushEnc(`${d}/${exact}`);
+  for (const d of DIRS) for (const f of fileCandidates) pushEnc(`${d}/${f}`);
+  return Array.from(new Set(urls));
+}
 
 function setImageSrcWithFallback(imgEl, candidates, headerEl, card) {
   let i = 0; const total = candidates.length;
@@ -991,6 +1033,23 @@ async function resolveImageFromDirs(fileName, authorName, titleHint) {
 async function loadImageItems(sectionId) {
   const items = [];
 
+  try {
+    const cfg = (window.driveFolders && window.driveFolders[sectionId]) ? window.driveFolders[sectionId] : (window.driveFolderId || '');
+    if (cfg) {
+      const listed = await listDriveFolderFiles(cfg);
+      for (const f of listed) {
+        items.push({
+          driveId: String(f.id || '').trim(),
+          driveUrl: `https://drive.google.com/file/d/${encodeURIComponent(f.id)}/view`,
+          file: String(f.name || '').trim(),
+          title: getTitleFromPath(f.name || ''),
+          author: displayNameOverrides(getTitleFromPath(f.name || '')),
+          description: ''
+        });
+      }
+    }
+  } catch {}
+
   // 0) Desde drive_<section>_index.json (raíz o /data)
   try {
     const driveItems = await fetchFirstJSON([`./drive_${sectionId}_index.json`]);
@@ -1010,12 +1069,12 @@ async function loadImageItems(sectionId) {
   if (DRIVE_ONLY) {
     const seen = new Set();
     const out = [];
+    const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
     for (const it of items) {
       const id = String(it.driveId || extractDriveId(it.driveUrl || '')).trim();
-      if (!id) continue;
-      const key = id.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
+      const key = id ? id.toLowerCase() : (norm(it.file) || norm(it.author));
+      if (key && seen.has(key)) continue;
+      if (key) seen.add(key);
       out.push(it);
     }
     return out;
@@ -1163,6 +1222,7 @@ document.addEventListener('click', async (ev) => {
         const dUrl = resolveDriveUrl(dId);
         if (dUrl && await probeImage(dUrl)) fullUrl = dUrl;
       }
+      if (!fullUrl) fullUrl = await resolveImageFromDirs(file, author, title);
     }
     if (!fullUrl) { alert('No se pudo abrir la imagen.'); return; }
     openImageViewer(fullUrl, title);
@@ -1337,9 +1397,10 @@ async function renderResults(sectionId) {
     const file = btn.getAttribute('data-file') || '';
     const author = btn.getAttribute('data-author') || '';
     const dId = btn.getAttribute('data-drive-id') || '';
-    const url = dId ? resolveDriveUrl(dId) : '';
+    let url = dId ? resolveDriveUrl(dId) : '';
+    if (!url) url = await resolveImageFromDirs(file, author, getTitleFromPath(file));
     if (!url) { alert('No se pudo abrir la imagen.'); return; }
     openImageViewer(url, author);
   });
 }
-const DRIVE_ONLY = true;
+const DRIVE_ONLY = false;
