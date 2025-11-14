@@ -232,7 +232,7 @@ async function renderSection(sectionId) {
   if (sectionId === 'portada' || sectionId === 'seccion1') {
     const items = await loadImageItems(sectionId);
     if (!items.length) {
-      coversGrid.innerHTML = `<div class="text-center py-10 text-gray-500 col-span-full">No hay imágenes. Edita <code>${sectionId}_index.json</code> o <code>portadas.json</code> en la raíz. Coloca archivos en <code>IMGs/Bocetos/${sectionId === 'seccion1' ? 'Sección 1' : 'Portadas'}</code>.</div>`;
+      coversGrid.innerHTML = `<div class="text-center py-10 text-gray-500 col-span-full">No hay imágenes. Edita <code>drive_${sectionId}_index.json</code> en la raíz y agrega los IDs de Drive.</div>`;
       return;
     }
 
@@ -281,15 +281,18 @@ async function renderSection(sectionId) {
       const votesEl = card.querySelector('[data-role="votes"]');
 
       const headerEl = card.querySelector('[data-role="header"]');
-      const candidates = [];
-      if (item && (item.driveId || item.driveUrl)) {
-        const dUrl = resolveDriveUrl(item.driveId || item.driveUrl);
-        if (dUrl) candidates.push(dUrl);
-        card.dataset.driveId = String(item.driveId || extractDriveId(item.driveUrl) || '').trim();
+      const driveId = String(item && (item.driveId || extractDriveId(item.driveUrl || '')) || '').trim();
+      const dUrl = driveId ? resolveDriveUrl(driveId) : '';
+      card.dataset.driveId = driveId;
+      if (dUrl) {
+        thumbEl.src = dUrl;
+        thumbEl.addEventListener('load', () => { miniEl.src = thumbEl.src; });
+        card.dataset.imageUrl = dUrl;
+      } else {
+        thumbEl.style.display = 'none';
+        headerEl.className = 'h-48 sm:h-64 bg-gray-200 flex items-center justify-center text-gray-500';
+        headerEl.textContent = 'Imagen desde Drive requerida';
       }
-      candidates.push(...getAllCandidateUrls(file, authorName, title));
-      setImageSrcWithFallback(thumbEl, candidates, headerEl, card);
-      thumbEl.addEventListener('load', () => { miniEl.src = thumbEl.src; });
 
       // Votos iniciales y suscripción (con fallback local)
       const localKey = `votes_local_${coverId}`;
@@ -519,35 +522,7 @@ function resolveDriveUrl(idOrUrl) {
   return id ? `https://drive.google.com/uc?export=view&id=${encodeURIComponent(id)}` : '';
 }
 
-function getAllCandidateUrls(fileName, authorName, titleHint) {
-  if (DRIVE_ONLY && String(window.location.hostname || '').endsWith('.github.io')) return [];
-  const DIRS = [
-    './IMGs/Bocetos/Portadas',
-    './IMGs/Bocetos/Sección 1'
-  ];
-  const bases = [fileName, authorName, titleHint].filter(Boolean);
-  const fileCandidates = Array.from(new Set(bases.flatMap((b)=> makeFileCandidates(String(b||'').trim()))));
-  const urls = [];
-  const pushEnc = (p) => { for (const u of encodePathVariantsList(p)) urls.push(u); };
-  const MAP_OVERRIDES = {
-    'emilio garcia': ['Emilio García.png'],
-    'fernando gonzalez': ['Fernando González.png'],
-    'fatima ramirez': ['Fátima Ramírez.png'],
-    'gabriel de jesus': ['Gabriel de Jesús.png'],
-    'luciano perez': ['Luciano Pérez.png'],
-    'mateo garduno': ['Mateo Garduño .png','Mateo Garduño.png'],
-    'yael nolasco': ['Yael Nolasco .png','Yael Nolasco.png'],
-    'joel hernandez': ['Joel Hernández.png','Joel_Hernandez.png'],
-    'vanessa bernabe': ['Vanessa Bernabé.png','Vanessa_Bernabe.png']
-  };
-  const key = String((authorName||fileName||titleHint)||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-  const extra = MAP_OVERRIDES[key]||[];
-  for (const d of DIRS) for (const f of extra) pushEnc(`${d}/${f}`);
-  const exact = String(fileName||'').trim();
-  if (exact) for (const d of DIRS) pushEnc(`${d}/${exact}`);
-  for (const d of DIRS) for (const f of fileCandidates) pushEnc(`${d}/${f}`);
-  return Array.from(new Set(urls));
-}
+function getAllCandidateUrls(fileName, authorName, titleHint) { return []; }
 
 function setImageSrcWithFallback(imgEl, candidates, headerEl, card) {
   let i = 0; const total = candidates.length;
@@ -609,6 +584,7 @@ function encodePathVariantsList(path) {
 // Actualiza getImageCandidates: fuerza carpeta ./pdfs/Portadas/img y variantes robustas
 // getImageCandidates(cover)
 function getImageCandidates(cover) {
+  return [];
   const DIRS = [
     './IMGs/Bocetos/portada',
     './IMGs/Bocetos/seccion1',
@@ -1031,7 +1007,7 @@ async function loadImageItems(sectionId) {
   } catch {}
 
   const onGithub = String(window.location.hostname || '').endsWith('.github.io');
-  if (DRIVE_ONLY && onGithub) {
+  if (DRIVE_ONLY) {
     const seen = new Set();
     const out = [];
     for (const it of items) {
@@ -1046,20 +1022,22 @@ async function loadImageItems(sectionId) {
   }
 
   // 1) Desde <section>_index.json
-  try {
-    const idx = await loadSectionIndex(sectionId);
-    for (const it of idx) {
-      items.push({
-        file: String(it.file || '').trim(),
-        title: it.title || '',
-        author: it.author || '',
-        description: it.description || ''
-      });
-    }
-  } catch {}
+  if (!DRIVE_ONLY) {
+    try {
+      const idx = await loadSectionIndex(sectionId);
+      for (const it of idx) {
+        items.push({
+          file: String(it.file || '').trim(),
+          title: it.title || '',
+          author: it.author || '',
+          description: it.description || ''
+        });
+      }
+    } catch {}
+  }
 
   // 2) Respaldo: desde portadas.json
-  if (sectionId !== 'portada') {
+  if (!DRIVE_ONLY && sectionId !== 'portada') {
     try {
       const r = await fetch('./portadas.json');
       if (r.ok) {
@@ -1185,7 +1163,6 @@ document.addEventListener('click', async (ev) => {
         const dUrl = resolveDriveUrl(dId);
         if (dUrl && await probeImage(dUrl)) fullUrl = dUrl;
       }
-      if (!fullUrl) fullUrl = await resolveImageFromDirs(file, author, title);
     }
     if (!fullUrl) { alert('No se pudo abrir la imagen.'); return; }
     openImageViewer(fullUrl, title);
@@ -1319,7 +1296,8 @@ async function renderResults(sectionId) {
     let count = 0;
     try { count = await getVoteCount(coverId); } catch {}
     const localCount = Number(lsGet(`votes_local_${coverId}`, '0'));
-    entries.push({ file, author: authorName, coverId, votes: Math.max(Number(count || 0), localCount) });
+    const driveId = String(it.driveId || extractDriveId(it.driveUrl || '') || '').trim();
+    entries.push({ file, author: authorName, coverId, votes: Math.max(Number(count || 0), localCount), driveId });
   }
 
   entries.sort((a,b) => b.votes - a.votes);
@@ -1339,7 +1317,7 @@ async function renderResults(sectionId) {
       <p class="text-gray-600">${getTitleFromPath(entry.file)}</p>
       <div class="mt-3 text-2xl font-extrabold text-indigo-600">${entry.votes} votos</div>
       <div class="mt-4 flex justify-center">
-        <button class="btn-primary" data-action="view" data-file="${entry.file}" data-author="${entry.author}">Ver</button>
+        <button class="btn-primary" data-action="view" data-file="${entry.file}" data-author="${entry.author}" data-drive-id="${entry.driveId || ''}">Ver</button>
       </div>
     `;
     layout.appendChild(card);
@@ -1358,9 +1336,10 @@ async function renderResults(sectionId) {
     if (!btn) return;
     const file = btn.getAttribute('data-file') || '';
     const author = btn.getAttribute('data-author') || '';
-    const url = await resolveImageFromDirs(file, author, getTitleFromPath(file));
+    const dId = btn.getAttribute('data-drive-id') || '';
+    const url = dId ? resolveDriveUrl(dId) : '';
     if (!url) { alert('No se pudo abrir la imagen.'); return; }
     openImageViewer(url, author);
   });
 }
-const DRIVE_ONLY = false;
+const DRIVE_ONLY = true;
