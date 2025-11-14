@@ -232,7 +232,7 @@ async function renderSection(sectionId) {
   if (sectionId === 'portada' || sectionId === 'seccion1') {
     const items = await loadImageItems(sectionId);
     if (!items.length) {
-      coversGrid.innerHTML = `<div class="text-center py-10 text-gray-500 col-span-full">No hay imágenes. Edita <code>drive_${sectionId}_index.json</code> en la raíz y agrega las URLs de Drive.</div>`;
+      coversGrid.innerHTML = `<div class="text-center py-10 text-gray-500 col-span-full">No hay imágenes. Verifica el feed de Drive o la subcarpeta correspondiente en Google Drive.</div>`;
       return;
     }
 
@@ -284,11 +284,32 @@ async function renderSection(sectionId) {
       const driveId = String(item && (item.driveId || extractDriveId(item.driveUrl || '')) || '').trim();
       const dUrl = driveId ? resolveDriveUrl(driveId) : '';
       card.dataset.driveId = driveId;
-      const candidates = [];
-      if (dUrl) candidates.push(dUrl);
-      candidates.push(...getAllCandidateUrls(file, authorName, title));
-      setImageSrcWithFallback(thumbEl, candidates, headerEl, card);
-      thumbEl.addEventListener('load', () => { miniEl.src = thumbEl.src; });
+      if (dUrl) {
+        thumbEl.src = dUrl;
+        thumbEl.addEventListener('load', () => { miniEl.src = thumbEl.src; });
+        card.dataset.imageUrl = dUrl;
+      } else {
+        // Intento de resolución por nombre dentro de la subcarpeta de la sección
+        const guessedFile = String(file || '').trim();
+        try {
+          const idByName = await findDriveFileIdByNameInSection(sectionId, guessedFile);
+          if (idByName) {
+            const url2 = resolveDriveUrl(idByName);
+            card.dataset.driveId = idByName;
+            card.dataset.imageUrl = url2;
+            thumbEl.src = url2;
+            thumbEl.addEventListener('load', () => { miniEl.src = thumbEl.src; });
+          } else {
+            thumbEl.style.display = 'none';
+            headerEl.className = 'h-48 sm:h-64 bg-gray-200 flex items-center justify-center text-gray-500';
+            headerEl.textContent = 'Imagen desde Drive requerida';
+          }
+        } catch {
+          thumbEl.style.display = 'none';
+          headerEl.className = 'h-48 sm:h-64 bg-gray-200 flex items-center justify-center text-gray-500';
+          headerEl.textContent = 'Imagen desde Drive requerida';
+        }
+      }
 
       // Votos iniciales y suscripción (con fallback local)
       const localKey = `votes_local_${coverId}`;
@@ -306,7 +327,7 @@ async function renderSection(sectionId) {
           voteBtnInit.disabled = false;
       }
 
-      if (db) {
+      if (USE_REALTIME && db) {
           const ref = db.collection('votes').doc(coverId);
           const unsub = ref.onSnapshot((snap) => {
               const data = snap.exists ? snap.data() : null;
@@ -318,7 +339,7 @@ async function renderSection(sectionId) {
                   voteBtn.textContent = voted ? 'Quitar voto' : 'Votar';
                   voteBtn.disabled = false;
               }
-          });
+          }, (err) => console.warn('onSnapshot error:', err));
           voteUnsubs.set(coverId, unsub);
       }
   });
@@ -408,7 +429,7 @@ async function renderSection(sectionId) {
     voteBtn.disabled = votedLocal;
 
     // Suscripción remota si hay Firebase
-    if (db) {
+    if (USE_REALTIME && db) {
         const ref = db.collection('votes').doc(cover.id);
         const unsub = ref.onSnapshot((snap) => {
             const data = (snap && typeof snap.data === 'function') ? snap.data() : null;
@@ -517,7 +538,8 @@ function extractDriveId(input) {
 }
 function resolveDriveUrl(idOrUrl) {
   const id = extractDriveId(idOrUrl);
-  return id ? `https://drive.google.com/uc?export=view&id=${encodeURIComponent(id)}` : '';
+  // Usa thumbnail JPEG para evitar ORB/CORB y asegurar Content-Type de imagen
+  return id ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w2000` : '';
 }
 
 async function listDriveFolderFiles(folderId) {
@@ -526,8 +548,9 @@ async function listDriveFolderFiles(folderId) {
     const fid = extractDriveId(folderId);
     if (!apiKey || !fid) return [];
     const q = encodeURIComponent(`'${fid}' in parents and trashed=false`);
-    const fields = encodeURIComponent('files(id,name,mimeType)');
-    const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=${fields}&pageSize=1000&key=${apiKey}`;
+    const fields = encodeURIComponent('files(id,name,mimeType,thumbnailLink,webContentLink)');
+    const params = `q=${q}&fields=${fields}&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true&orderBy=name&key=${apiKey}`;
+    const url = `https://www.googleapis.com/drive/v3/files?${params}`;
     const res = await fetch(url);
     if (!res.ok) return [];
     const data = await res.json();
@@ -535,9 +558,37 @@ async function listDriveFolderFiles(folderId) {
     return files.filter(f => /image\//.test(String(f.mimeType||''))).map(f => ({ id: f.id, name: f.name }));
   } catch { return []; }
 }
+async function getDriveSubfolderId(rootFolderId, subName) {
+  try {
+    const apiKey = (window.firebaseConfig && window.firebaseConfig.apiKey) ? window.firebaseConfig.apiKey : (window.googleApiKey || '');
+    const rid = extractDriveId(rootFolderId);
+    if (!apiKey || !rid || !subName) return '';
+    const q = encodeURIComponent(`'${rid}' in parents and trashed=false and mimeType='application/vnd.google-apps.folder'`);
+    const fields = encodeURIComponent('files(id,name)');
+    const params = `q=${q}&fields=${fields}&supportsAllDrives=true&includeItemsFromAllDrives=true&orderBy=name&key=${apiKey}`;
+    const url = `https://www.googleapis.com/drive/v3/files?${params}`;
+    const res = await fetch(url);
+    if (!res.ok) return '';
+    const data = await res.json();
+    const files = Array.isArray(data.files) ? data.files : [];
+    const norm = (s) => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
+    const match = files.find(f => norm(f.name) === norm(subName));
+    return match ? String(match.id||'') : '';
+  } catch { return ''; }
+}
+async function fetchDriveFeed(feedUrl) {
+  try {
+    const res = await fetch(feedUrl);
+    if (!res.ok) return [];
+    const data = await res.json();
+    const arr = Array.isArray(data) ? data : (Array.isArray(data.files) ? data.files : []);
+    return arr.map(f => ({ id: String(f.id || '').trim(), name: String(f.name || '').trim() })).filter(x => x.id && x.name);
+  } catch { return []; }
+}
+
 
 function getAllCandidateUrls(fileName, authorName, titleHint) {
-  if (DRIVE_ONLY && String(window.location.hostname || '').endsWith('.github.io')) return [];
+  if (DRIVE_ONLY) return [];
   const DIRS = [
     './IMGs/Bocetos/Portadas',
     './IMGs/Bocetos/Sección 1'
@@ -571,6 +622,7 @@ function setImageSrcWithFallback(imgEl, candidates, headerEl, card) {
   function tryNext() {
     if (i >= total) { if (headerEl) { headerEl.className = 'h-48 sm:h-64 bg-gray-200 flex items-center justify-center text-gray-500'; headerEl.textContent = 'Imagen no encontrada'; } return; }
     const url = candidates[i++];
+    imgEl.referrerPolicy = 'no-referrer';
     imgEl.onload = () => { if (card) card.dataset.imageUrl = url; };
     imgEl.onerror = tryNext;
     imgEl.src = url;
@@ -1034,8 +1086,24 @@ async function loadImageItems(sectionId) {
   const items = [];
 
   try {
+    const feed = (window.driveFeedUrls && window.driveFeedUrls[sectionId]) ? window.driveFeedUrls[sectionId] : '';
+    let feedCount = 0;
+    if (feed) {
+      const listed = await fetchDriveFeed(feed);
+      feedCount = Array.isArray(listed) ? listed.length : 0;
+      for (const f of listed) {
+        items.push({
+          driveId: String(f.id || '').trim(),
+          driveUrl: `https://drive.google.com/file/d/${encodeURIComponent(f.id)}/view`,
+          file: String(f.name || '').trim(),
+          title: getTitleFromPath(f.name || ''),
+          author: displayNameOverrides(getTitleFromPath(f.name || '')),
+          description: ''
+        });
+      }
+    }
     const cfg = (window.driveFolders && window.driveFolders[sectionId]) ? window.driveFolders[sectionId] : (window.driveFolderId || '');
-    if (cfg) {
+    if (cfg && !feedCount) {
       const listed = await listDriveFolderFiles(cfg);
       for (const f of listed) {
         items.push({
@@ -1048,34 +1116,61 @@ async function loadImageItems(sectionId) {
         });
       }
     }
-  } catch {}
-
-  // 0) Desde drive_<section>_index.json (raíz o /data)
-  try {
-    const driveItems = await fetchFirstJSON([`./drive_${sectionId}_index.json`]);
-    for (const it of driveItems) {
-      items.push({
-        driveId: String(it.driveId || '').trim(),
-        driveUrl: String(it.driveUrl || '').trim(),
-        file: String(it.file || '').trim(),
-        title: it.title || '',
-        author: it.author || '',
-        description: it.description || ''
-      });
+    const rootId = window.driveRootFolderId || '';
+    if (rootId && !feedCount && !cfg) {
+      const mapNames = { portada: 'Portadas', seccion1: 'Sección 1', seccion2: 'Sección 2', seccion3: 'Sección 3', seccion4: 'Sección 4', seccion5: 'Sección 5' };
+      const subName = mapNames[sectionId] || '';
+      const subId = await getDriveSubfolderId(rootId, subName);
+      if (subId) {
+        const listed = await listDriveFolderFiles(subId);
+        for (const f of listed) {
+          items.push({
+            driveId: String(f.id || '').trim(),
+            driveUrl: `https://drive.google.com/file/d/${encodeURIComponent(f.id)}/view`,
+            file: String(f.name || '').trim(),
+            title: getTitleFromPath(f.name || ''),
+            author: displayNameOverrides(getTitleFromPath(f.name || '')),
+            description: ''
+          });
+        }
+      }
     }
   } catch {}
 
+
+  // 0) Desde drive_<section>_index.json (raíz o /data)
+  if (!DRIVE_ONLY) {
+    try {
+      const driveItems = await fetchFirstJSON([`./drive_${sectionId}_index.json`]);
+      for (const it of driveItems) {
+        items.push({
+          driveId: String(it.driveId || '').trim(),
+          driveUrl: String(it.driveUrl || '').trim(),
+          file: String(it.file || '').trim(),
+          title: it.title || '',
+          author: it.author || '',
+          description: it.description || ''
+        });
+      }
+    } catch {}
+  }
+
   const onGithub = String(window.location.hostname || '').endsWith('.github.io');
   if (DRIVE_ONLY) {
-    const seen = new Set();
-    const out = [];
     const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const hasDrive = (it) => !!String(it.driveId||'').trim() || !!extractDriveId(it.driveUrl||'');
+    const seenIds = new Set();
+    const seenNames = new Set();
+    const out = [];
     for (const it of items) {
-      const id = String(it.driveId || extractDriveId(it.driveUrl || '')).trim();
-      const key = id ? id.toLowerCase() : (norm(it.file) || norm(it.author));
-      if (key && seen.has(key)) continue;
-      if (key) seen.add(key);
+      if (!hasDrive(it)) continue;
+      const id = String(it.driveId || extractDriveId(it.driveUrl || '') || '').trim().toLowerCase();
+      const base = norm(String(it.file || '').replace(/\.[^/.]+$/, ''));
+      const author = norm(it.author || '');
+      const candidateKeys = [id, base, author].filter(Boolean);
+      if (candidateKeys.some(k => seenIds.has(k) || seenNames.has(k))) continue;
       out.push(it);
+      for (const k of candidateKeys) { seenIds.add(k); seenNames.add(k); }
     }
     return out;
   }
@@ -1158,7 +1253,6 @@ async function loadImageItems(sectionId) {
       }
     }
   } catch {}
-  const seen = new Set();
   const placeholderAuthors = new Set(['Nombre de la persona autora', 'Otra persona autora', 'Nombre']);
   const placeholderTitles = new Set(['Portada informativa', 'Portada genérica']);
 
@@ -1166,17 +1260,18 @@ async function loadImageItems(sectionId) {
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, ' ').trim().toLowerCase();
 
-  return items.filter(it => {
+  const byFile = new Map();
+  const hasDrive = (it) => !!String(it.driveId||'').trim() || !!extractDriveId(it.driveUrl||'');
+  for (const it of items) {
     const isPlaceholder =
       placeholderAuthors.has(String(it.author || '').trim()) ||
       placeholderTitles.has(String(it.title || '').trim());
-    if (isPlaceholder) return false;
-    // Dedup por archivo (permite variantes "1"/"2" del mismo autor)
-    const fileKey = norm(it.file || '');
-    if (seen.has(fileKey)) return false;
-    seen.add(fileKey);
-    return true;
-  });
+    if (isPlaceholder) continue;
+    const key = norm(it.file || it.title || it.author || '');
+    const prev = byFile.get(key);
+    if (!prev || (hasDrive(it) && !hasDrive(prev))) byFile.set(key, it);
+  }
+  return Array.from(byFile.values());
 }
 
 async function fetchFirstJSON(urls) {
@@ -1403,4 +1498,5 @@ async function renderResults(sectionId) {
     openImageViewer(url, author);
   });
 }
-const DRIVE_ONLY = false;
+const DRIVE_ONLY = true;
+const USE_REALTIME = false;

@@ -1,39 +1,18 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Conteo de votos por portada: votes/{coverId} -> { count: number }
     match /votes/{coverId} {
       allow read: if true;
-
-      // Crear doc con count inicial
-      allow create: if request.auth != null
+      allow create, update: if request.auth != null
         && request.resource.data.keys().hasOnly(['count'])
         && request.resource.data.count >= 0;
-
-      // Actualizar: +1 si NO existe el voto del usuario; -1 si SÍ existe (toggle)
-      allow update: if request.auth != null
-        && request.resource.data.keys().hasOnly(['count'])
-        && (
-          (request.resource.data.count == resource.data.count + 1
-            && !exists(/databases/$(database)/documents/userVotes/$(coverId + "_" + request.auth.uid)))
-          ||
-          (request.resource.data.count == resource.data.count - 1
-            && exists(/databases/$(database)/documents/userVotes/$(coverId + "_" + request.auth.uid)))
-        );
     }
 
-    // Registro del voto por usuario: userVotes/{coverId_uid}
     match /userVotes/{voteId} {
       allow read: if request.auth != null;
-
-      // Crear solo por el mismo usuario y cuando no exista
       allow create: if request.auth != null
         && request.resource.data.keys().hasOnly(['coverId','uid','createdAt'])
-        && request.resource.data.uid == request.auth.uid
-        && !exists(/databases/$(database)/documents/userVotes/$(voteId));
-
-      // Borrar solo el dueño del voto (para quitar su voto)
+        && request.resource.data.uid == request.auth.uid;
       allow delete: if request.auth != null
         && resource.data.uid == request.auth.uid;
     }
