@@ -238,15 +238,15 @@ async function renderSection(sectionId) {
 
     items.forEach(async (item) => {
       const file = String(item.file || '').trim();
-      const displayTitle = sectionNames[sectionId] ? `${sectionNames[sectionId]} (boceto)` : 'Boceto';
       const authorName = item.author || displayNameOverrides(getTitleFromPath(file));
+      const displayTitle = `${sectionNames[sectionId] || sectionId} (boceto)`;
       const coverId = `img_${getTitleFromPath(file).toLowerCase().replace(/\s+/g, '_')}`;
 
       const card = document.createElement('article');
       card.className = 'group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow min-h-[340px]';
       card.innerHTML = `
         <div class="h-48 sm:h-64 bg-gray-100 overflow-hidden relative" data-role="header">
-          <img alt="Miniatura de ${title}" loading="lazy"
+          <img alt="Miniatura de ${displayTitle}" loading="lazy"
                class="w-full h-full object-cover transform transition-transform duration-300 ease-out group-hover:scale-110"
                data-role="thumb">
         </div>
@@ -360,7 +360,7 @@ async function renderSection(sectionId) {
     const votedKey = `voted_${cover.id}`;
     let votedLocal = lsGet(votedKey, 'false') === 'true';
 
-    const sectionDisplay = sectionNames[sectionId] ? `${sectionNames[sectionId]} (boceto)` : 'Boceto';
+    const titleDetected = `${sectionNames[sectionId] || sectionId} (boceto)`;
 
     const card = document.createElement('article');
     card.className = 'group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow';
@@ -371,7 +371,7 @@ async function renderSection(sectionId) {
              data-role="thumb">
       </div>
       <div class="p-6">
-        <h3 class="text-xl font-bold mb-2">${sectionDisplay}</h3>
+        <h3 class="text-xl font-bold mb-2">${titleDetected}</h3>
         <p class="text-gray-600 mb-4 line-clamp-2">${cover.description || ''}</p>
         <div class="grid grid-cols-3 gap-2 mb-4 items-stretch">
           <button class="flex-1 px-4 min-h-[42px] bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm sm:text-base whitespace-nowrap" data-action="info">Info</button>
@@ -441,7 +441,7 @@ async function renderSection(sectionId) {
     }
 
     infoBtn.addEventListener('click', () => showInfo({
-      Título: sectionDisplay,
+      Título: titleDetected,
       Autor: cover.author,
       Sección: sectionNames[cover.section] || cover.section,
       Descripción: cover.description || '—',
@@ -452,7 +452,7 @@ async function renderSection(sectionId) {
       let fullUrl = currentImageSrc;
       if (!fullUrl) fullUrl = await resolveThumbnailUrl(cover);
       if (!fullUrl) { alert('No se pudo abrir la imagen.'); return; }
-      openImageViewer(fullUrl, sectionDisplay);
+      openImageViewer(fullUrl, titleDetected);
     });
 
     voteBtn.addEventListener('click', async () => {
