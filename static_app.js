@@ -239,7 +239,7 @@ async function renderSection(sectionId) {
     items.forEach(async (item) => {
       const file = String(item.file || '').trim();
       const title = item.title || getTitleFromPath(file);
-      const authorName = item.author || 'Autor/a';
+      const authorName = item.author || displayNameOverrides(getTitleFromPath(file));
       const coverId = `img_${getTitleFromPath(file).toLowerCase().replace(/\s+/g, '_')}`;
 
       const card = document.createElement('article');
@@ -289,7 +289,7 @@ async function renderSection(sectionId) {
       }
       candidates.push(...getAllCandidateUrls(file, authorName, title));
       setImageSrcWithFallback(thumbEl, candidates, headerEl, card);
-      miniEl.src = thumbEl.src;
+      thumbEl.addEventListener('load', () => { miniEl.src = thumbEl.src; });
 
       // Votos iniciales y suscripción (con fallback local)
       const localKey = `votes_local_${coverId}`;
@@ -517,6 +517,63 @@ function extractDriveId(input) {
 function resolveDriveUrl(idOrUrl) {
   const id = extractDriveId(idOrUrl);
   return id ? `https://drive.google.com/uc?export=view&id=${encodeURIComponent(id)}` : '';
+}
+
+function getAllCandidateUrls(fileName, authorName, titleHint) {
+  if (DRIVE_ONLY && String(window.location.hostname || '').endsWith('.github.io')) return [];
+  const DIRS = [
+    './IMGs/Bocetos/Portadas',
+    './IMGs/Bocetos/Sección 1'
+  ];
+  const bases = [fileName, authorName, titleHint].filter(Boolean);
+  const fileCandidates = Array.from(new Set(bases.flatMap((b)=> makeFileCandidates(String(b||'').trim()))));
+  const urls = [];
+  const pushEnc = (p) => { for (const u of encodePathVariantsList(p)) urls.push(u); };
+  const MAP_OVERRIDES = {
+    'emilio garcia': ['Emilio García.png'],
+    'fernando gonzalez': ['Fernando González.png'],
+    'fatima ramirez': ['Fátima Ramírez.png'],
+    'gabriel de jesus': ['Gabriel de Jesús.png'],
+    'luciano perez': ['Luciano Pérez.png'],
+    'mateo garduno': ['Mateo Garduño .png','Mateo Garduño.png'],
+    'yael nolasco': ['Yael Nolasco .png','Yael Nolasco.png'],
+    'joel hernandez': ['Joel Hernández.png','Joel_Hernandez.png'],
+    'vanessa bernabe': ['Vanessa Bernabé.png','Vanessa_Bernabe.png']
+  };
+  const key = String((authorName||fileName||titleHint)||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const extra = MAP_OVERRIDES[key]||[];
+  for (const d of DIRS) for (const f of extra) pushEnc(`${d}/${f}`);
+  const exact = String(fileName||'').trim();
+  if (exact) for (const d of DIRS) pushEnc(`${d}/${exact}`);
+  for (const d of DIRS) for (const f of fileCandidates) pushEnc(`${d}/${f}`);
+  return Array.from(new Set(urls));
+}
+
+function setImageSrcWithFallback(imgEl, candidates, headerEl, card) {
+  let i = 0; const total = candidates.length;
+  function tryNext() {
+    if (i >= total) { if (headerEl) { headerEl.className = 'h-48 sm:h-64 bg-gray-200 flex items-center justify-center text-gray-500'; headerEl.textContent = 'Imagen no encontrada'; } return; }
+    const url = candidates[i++];
+    imgEl.onload = () => { if (card) card.dataset.imageUrl = url; };
+    imgEl.onerror = tryNext;
+    imgEl.src = url;
+  }
+  tryNext();
+}
+
+function displayNameOverrides(name) {
+  const map = {
+    'diana gonzalez': 'Diana González',
+    'nataly flores': 'Nataly Flores',
+    'renata bravo': 'Renata Bravo',
+    'sarai bolivar': 'Sarai Bolívar',
+    'mateo garduno': 'Mateo Garduño',
+    'joel hernandez': 'Joel Hernández',
+    'emilio garcia': 'Emilio García',
+    'fernando gonzalez': 'Fernando González'
+  };
+  const k = String(name || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return map[k] || name;
 }
 
 function encodePathVariantsList(path) {
