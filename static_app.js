@@ -195,9 +195,16 @@ let coversCache = [];
 async function loadCovers() {
   if (coversCache.length) return coversCache;
   try {
-    const res = await fetch('./data/portadas.json');
-    if (!res.ok) throw new Error('No se pudo cargar portadas.json');
-    coversCache = await res.json();
+    const urls = ['./portadas.json', './data/portadas.json'];
+    let ok = null;
+    for (const u of urls) {
+      try {
+        const r = await fetch(u);
+        if (r.ok) { ok = r; break; }
+      } catch {}
+    }
+    if (!ok) throw new Error('No se pudo cargar portadas.json');
+    coversCache = await ok.json();
   } catch (e) {
     // Fallback de ejemplo
     coversCache = [
@@ -232,7 +239,7 @@ async function renderSection(sectionId) {
   if (sectionId === 'portada' || sectionId === 'seccion1') {
     const items = await loadImageItems(sectionId);
     if (!items.length) {
-      coversGrid.innerHTML = `<div class="text-center py-10 text-gray-500 col-span-full">No hay imágenes. Edita <code>data/${sectionId}_index.json</code> o <code>data/portadas.json</code>. Coloca archivos en <code>Imagenes/Bocetos/${sectionId}</code> (o <code>bocetos/${sectionId}</code> por compatibilidad).</div>`;
+      coversGrid.innerHTML = `<div class="text-center py-10 text-gray-500 col-span-full">No hay imágenes. Edita <code>${sectionId}_index.json</code> o <code>portadas.json</code> en la raíz. Coloca archivos en <code>IMGs/Bocetos/${sectionId === 'seccion1' ? 'Sección 1' : 'Portadas'}</code>.</div>`;
       return;
     }
 
@@ -844,15 +851,14 @@ async function toggleVoteWithUserLock(coverId) {
 
 // Cargar índice de imágenes para Portada
 async function loadSectionIndex(sectionId) {
-  const file = `./data/${sectionId}_index.json`;
-  try {
-    const res = await fetch(file);
-    if (!res.ok) throw new Error(`No se pudo cargar ${sectionId}_index.json`);
-    return await res.json();
-  } catch (e) {
-    console.warn(`${sectionId}_index.json no disponible:`, e);
-    return [];
+  const urls = [`./${sectionId}_index.json`, `./data/${sectionId}_index.json`];
+  for (const u of urls) {
+    try {
+      const res = await fetch(u);
+      if (res.ok) return await res.json();
+    } catch {}
   }
+  return [];
 }
 
 // Probar carga de imagen con <img> (evita HEAD que falla local)
@@ -1062,9 +1068,16 @@ async function loadImageItems(sectionId) {
   // 2) Respaldo: desde portadas.json
   if (sectionId !== 'portada') {
     try {
-      const res = await fetch('./data/portadas.json');
-      if (res.ok) {
-        const covers = await res.json();
+      const urls = ['./portadas.json', './data/portadas.json'];
+      let ok = null;
+      for (const u of urls) {
+        try {
+          const r = await fetch(u);
+          if (r.ok) { ok = r; break; }
+        } catch {}
+      }
+      if (ok) {
+        const covers = await ok.json();
         for (const c of covers) {
           if (String(c.section || '') !== sectionId) continue;
           const fileCandidate = (c.imagePath ? c.imagePath.split('/').pop() : '') ||
@@ -1141,6 +1154,16 @@ async function loadImageItems(sectionId) {
     seen.add(fileKey);
     return true;
   });
+}
+
+async function fetchFirstJSON(urls) {
+  for (const u of urls) {
+    try {
+      const res = await fetch(u);
+      if (res.ok) return await res.json();
+    } catch {}
+  }
+  return [];
 }
 
 // Delegación: un único listener para Info / Ver / Votar (solo Portada)
