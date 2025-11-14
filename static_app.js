@@ -280,26 +280,16 @@ async function renderSection(sectionId) {
       const miniEl = card.querySelector('[data-role="mini"]');
       const votesEl = card.querySelector('[data-role="votes"]');
 
-      // Resuelve y carga imagen (Drive primero si hay driveId)
-      let imgUrl = null;
-      if (item && item.driveId) {
-        const dUrl = resolveDriveUrl(item.driveId);
-        if (dUrl && await probeImage(dUrl)) imgUrl = dUrl;
-        card.dataset.driveId = String(item.driveId || '').trim();
+      const headerEl = card.querySelector('[data-role="header"]');
+      const candidates = [];
+      if (item && (item.driveId || item.driveUrl)) {
+        const dUrl = resolveDriveUrl(item.driveId || item.driveUrl);
+        if (dUrl) candidates.push(dUrl);
+        card.dataset.driveId = String(item.driveId || extractDriveId(item.driveUrl) || '').trim();
       }
-      if (!imgUrl) imgUrl = await resolveImageFromDirs(file, authorName, title);
-      if (imgUrl) {
-          thumbEl.src = imgUrl;
-          miniEl.src = imgUrl;
-          card.dataset.imageUrl = imgUrl;
-      } else {
-          const headerEl = card.querySelector('[data-role="header"]');
-          thumbEl.style.display = 'none';
-          miniEl.style.display = 'none';
-          headerEl.className = 'h-48 sm:h-64 bg-gray-200 flex items-center justify-center text-gray-500';
-          headerEl.textContent = 'Imagen no encontrada';
-          card.dataset.imageUrl = '';
-      }
+      candidates.push(...getAllCandidateUrls(file, authorName, title));
+      setImageSrcWithFallback(thumbEl, candidates, headerEl, card);
+      miniEl.src = thumbEl.src;
 
       // Votos iniciales y suscripción (con fallback local)
       const localKey = `votes_local_${coverId}`;
