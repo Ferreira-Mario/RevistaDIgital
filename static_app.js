@@ -1024,6 +1024,7 @@ async function loadImageItems(sectionId) {
       for (const it of driveItems) {
         items.push({
           driveId: String(it.driveId || '').trim(),
+          driveUrl: String(it.driveUrl || '').trim(),
           file: String(it.file || '').trim(),
           title: it.title || '',
           author: it.author || '',
@@ -1032,6 +1033,21 @@ async function loadImageItems(sectionId) {
       }
     }
   } catch {}
+
+  const onGithub = String(window.location.hostname || '').endsWith('.github.io');
+  if (DRIVE_ONLY && onGithub) {
+    const seen = new Set();
+    const out = [];
+    for (const it of items) {
+      const id = String(it.driveId || extractDriveId(it.driveUrl || '')).trim();
+      if (!id) continue;
+      const key = id.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(it);
+    }
+    return out;
+  }
 
   // 1) Desde <section>_index.json
   try {
