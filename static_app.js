@@ -207,6 +207,21 @@ window.resetAllVotes = async function resetAllVotes() {
   } catch {}
 };
 
+window.resetVotesSection = resetVotesSection;
+window.listCoverIdsForSection = listCoverIdsForSection;
+var resetAllVotes = window.resetAllVotes;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const qs = new URLSearchParams(window.location.search || '');
+    if (qs.get('resetAllVotes') === '1') {
+      if (typeof window.resetAllVotes === 'function') { await window.resetAllVotes(); }
+    }
+    const sec = qs.get('resetSection');
+    if (sec && typeof window.resetVotesSection === 'function') { await window.resetVotesSection(sec); }
+  } catch {}
+});
+
 function refreshCardVotes(card) {
   if (!card) return;
   const votesEl = card.querySelector('[data-role="votes"]');
