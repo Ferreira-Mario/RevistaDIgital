@@ -127,6 +127,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (dUrl) siteLogo.src = dUrl;
   }
 
+  try {
+    await dbReady;
+    const doneD = localStorage.getItem('votes_remote_reset_author_diana_v1');
+    if (!doneD && db && typeof resetVotesByAuthor === 'function') {
+      const sections = ['portada','seccion1','seccion2','seccion3','seccion4','seccion5'];
+      for (const s of sections) {
+        try { await resetVotesByAuthor(s, 'Diana Gonzalez'); } catch {}
+        try { await resetVotesByAuthor(s, 'Diana Gonzales'); } catch {}
+      }
+      localStorage.setItem('votes_remote_reset_author_diana_v1', 'true');
+    }
+  } catch {}
+
   const sectionSelect = document.getElementById('resultsSectionSelect');
   if (sectionSelect && resultsGrid) {
     const initial = resultsSection || 'portada';
@@ -224,6 +237,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const sec2 = qs.get('section');
     const auth = qs.get('resetAuthor');
     if (sec2 && auth && typeof window.resetVotesByAuthor === 'function') { await window.resetVotesByAuthor(sec2, auth); }
+    const cid = qs.get('resetCoverId');
+    if (cid && db) {
+      try { await db.collection('votes').doc(String(cid)).set({ count: 0 }, { merge: true }); } catch {}
+      try { lsRemove(`votes_local_${cid}`); lsRemove(`voted_${cid}`); } catch {}
+    }
   } catch {}
 });
 
