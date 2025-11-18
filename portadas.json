@@ -1,66 +1,26 @@
 [
-  {
-    "id": "portada-001",
-    "title": "Descubre las noticias que hay a nuestro alrededor",
-    "author": "Equipo Editorial",
-    "description": "Portada informativa",
-    "section": "portada",
-    "pdfPath": "./pdfs/Portadas/Descubre las noticias que hay a nuestro al rededor.pdf"
-  },
-  {
-    "id": "portada-002",
-    "title": "Portada de revista",
-    "author": "Equipo Editorial",
-    "description": "Portada genérica",
-    "section": "portada",
-    "pdfPath": "./pdfs/Portadas/Portada de revista.pdf"
-  },
-  {
-    "id": "portada-003",
-    "title": "La huella del alce",
-    "author": "Sarai Bolívar",
-    "description": "Edición especial La Huella del Alce",
-    "section": "portada",
-    "pdfPath": "./pdfs/Portadas/HUELLA DEL ALCE.pdf"
-  },
-  {
-    "id": "portada-004",
-    "title": "La huella del alce — versión 2025",
-    "author": "Equipo Editorial",
-    "description": "Edición 2025",
-    "section": "portada",
-    "pdfPath": "./pdfs/Portadas/La huella del alce_20251104_232842_0000.pdf"
-  },
-  {
-    "id": "portada-005",
-    "title": "Cover",
-    "author": "Equipo Creativo",
-    "description": "Propuesta de portada",
-    "section": "portada",
-    "pdfPath": "./pdfs/Portadas/Cover.pdf"
-  },
-  {
-    "id": "portada-006",
-    "title": "Portada — borrador",
-    "author": "Equipo Editorial",
-    "description": "Borrador de portada",
-    "section": "portada",
-    "pdfPath": "./pdfs/Portadas/borrador de portada.pdf"
-  },
-  {
-    "id": "portada-007",
-    "title": "Portada para la revista",
-    "author": "Equipo Editorial",
-    "description": "Propuesta principal",
-    "section": "portada",
-    "pdfPath": "./pdfs/Portadas/portada para la revista.pdf"
-  },
-  {
-    "id": "portada-008",
-    "title": "La huella",
-    "author": "Equipo Editorial",
-    "description": "Variación de portada",
-    "section": "portada",
-    "pdfPath": "./pdfs/Portadas/La huella.pdf"
-  }
+  { "id": "portada-1", "title": "Portada Ejemplo 1", "author": "Arturo Forcelledo", "description": "Portada de muestra 1", "section": "portada" },
+  { "id": "portada-2", "title": "Portada Ejemplo 2", "author": "Barbara Jimenez", "description": "Portada de muestra 2", "section": "portada" },
+  { "id": "portada-3", "title": "Portada Ejemplo 3", "author": "Diana Gonzalez", "description": "Portada de muestra 3", "section": "portada" },
+  
+  { "id": "seccion1-1", "title": "Sección 1 Ejemplo 1", "author": "Didian Fernandez", "description": "Sección 1 de muestra 1", "section": "seccion1" },
+  { "id": "seccion1-2", "title": "Sección 1 Ejemplo 2", "author": "Emiliano Maxil", "description": "Sección 1 de muestra 2", "section": "seccion1" },
+  { "id": "seccion1-3", "title": "Sección 1 Ejemplo 3", "author": "Emilio García", "description": "Sección 1 de muestra 3", "section": "seccion1" },
+  
+  { "id": "seccion2-1", "title": "Sección 2 Ejemplo 1", "author": "Fernando González", "description": "Sección 2 de muestra 1", "section": "seccion2" },
+  { "id": "seccion2-2", "title": "Sección 2 Ejemplo 2", "author": "Fátima Ramírez", "description": "Sección 2 de muestra 2", "section": "seccion2" },
+  { "id": "seccion2-3", "title": "Sección 2 Ejemplo 3", "author": "Gabriel de Jesús", "description": "Sección 2 de muestra 3", "section": "seccion2" },
+  
+  { "id": "seccion3-1", "title": "Sección 3 Ejemplo 1", "author": "Gregory Vega", "description": "Sección 3 de muestra 1", "section": "seccion3" },
+  { "id": "seccion3-2", "title": "Sección 3 Ejemplo 2", "author": "Hannah Bonilla", "description": "Sección 3 de muestra 2", "section": "seccion3" },
+  { "id": "seccion3-3", "title": "Sección 3 Ejemplo 3", "author": "Ian Hazael", "description": "Sección 3 de muestra 3", "section": "seccion3" },
+  { "id": "seccion3-4", "title": "Sección 3 Ejemplo 4", "author": "Joel Hernández", "description": "Sección 3 de muestra 4", "section": "seccion3" },
+  
+  { "id": "seccion4-1", "title": "Sección 4 Ejemplo 1", "author": "Luciano Pérez", "description": "Sección 4 de muestra 1", "section": "seccion4" },
+  { "id": "seccion4-2", "title": "Sección 4 Ejemplo 2", "author": "Mateo Garduño", "description": "Sección 4 de muestra 2", "section": "seccion4" },
+  { "id": "seccion4-3", "title": "Sección 4 Ejemplo 3", "author": "Nataly Flores", "description": "Sección 4 de muestra 3", "section": "seccion4" },
+  
+  { "id": "seccion5-1", "title": "Sección 5 Ejemplo 1", "author": "Renata Bravo", "description": "Sección 5 de muestra 1", "section": "seccion5" },
+  { "id": "seccion5-2", "title": "Sección 5 Ejemplo 2", "author": "Sarai Bolivar", "description": "Sección 5 de muestra 2", "section": "seccion5" },
+  { "id": "seccion5-3", "title": "Sección 5 Ejemplo 3", "author": "Valentina Cal", "description": "Sección 5 de muestra 3", "section": "seccion5" }
 ]

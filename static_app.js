@@ -111,26 +111,31 @@ window.addEventListener('hashchange', route);
 // Inicializa la vista al cargar (router si hay vistas) y render directo si se especifica sección
 document.addEventListener('DOMContentLoaded', () => {
   route();
+  if (!window.votingOverride) window.votingOverride = 'open';
+  const lockEl = document.getElementById('voteLock');
+  if (lockEl) lockEl.classList.add('hidden');
   const sectionAttr = (document.body && document.body.dataset) ? document.body.dataset.section : '';
   if (sectionAttr) renderSection(sectionAttr);
   const resultsGrid = document.getElementById('resultsGrid');
   const resultsSection = (document.body && document.body.dataset) ? document.body.dataset.section : '';
   if (resultsGrid && resultsSection) renderResults(resultsSection);
-  if (resultsGrid && resultsSection && window.autoRefreshResultsMs && !window._resultsRefreshTimer) {
-    const ms = Number(window.autoRefreshResultsMs) || 5000;
-    window._resultsRefreshTimer = setInterval(() => renderResults(resultsSection), ms);
-  }
-  if (resultsGrid && resultsSection && USE_REALTIME && db && !window._resultsRealtimeUnsub) {
-    try {
-      window._resultsRealtimeUnsub = db.collection('votes').onSnapshot(() => renderResults(resultsSection));
-    } catch {}
-  }
   const siteLogo = document.getElementById('siteLogo');
   const logoId = (window && window.siteLogoDriveId) ? window.siteLogoDriveId : '';
   const onGithub = String(window.location.hostname || '').endsWith('.github.io');
   if (siteLogo && onGithub && logoId) {
     const dUrl = resolveDriveUrl(logoId);
     if (dUrl) siteLogo.src = dUrl;
+  }
+
+  const sectionSelect = document.getElementById('resultsSectionSelect');
+  if (sectionSelect && resultsGrid) {
+    const initial = resultsSection || 'portada';
+    try { sectionSelect.value = initial; } catch {}
+    sectionSelect.addEventListener('change', () => {
+      const val = sectionSelect.value || 'portada';
+      if (document.body && document.body.dataset) document.body.dataset.section = val;
+      renderResults(val);
+    });
   }
 });
 
@@ -149,8 +154,44 @@ function lsRemove(key) {
   try { localStorage.removeItem(key); } catch {}
 }
 
+function getCid(card, fallbackId) {
+  const dId = String((card && card.dataset && card.dataset.driveId) || '').trim();
+  if (dId) return `img_${dId}`;
+  const cId = String((card && card.dataset && card.dataset.coverId) || '').trim();
+  if (cId) return cId;
+  return String(fallbackId || '').trim();
+}
+
+async function incVoteRemote(cid, delta) {
+  try {
+    if (!db || typeof firebase === 'undefined') return;
+    const ref = db.collection('votes').doc(cid);
+    await ref.set({ count: firebase.firestore.FieldValue.increment(delta) }, { merge: true });
+  } catch {}
+}
+
+function refreshCardVotes(card) {
+  if (!card) return;
+  const votesEl = card.querySelector('[data-role="votes"]');
+  const btn = card.querySelector('[data-action="vote"]');
+  const cid = getCid(card, card && card.dataset ? card.dataset.coverId : '');
+  const count = Number(lsGet(`votes_local_${cid}`, '0'));
+  const voted = lsGet(`voted_${cid}`, 'false') === 'true';
+  if (votesEl) votesEl.textContent = String(count);
+  if (btn) {
+    btn.textContent = voted ? 'Quitar voto' : 'Votar';
+    if (voted) {
+      btn.className = 'btn-primary flex-1 px-5 py-3 min-h-[48px] text-base sm:text-lg whitespace-nowrap cursor-pointer';
+    } else {
+      btn.className = 'btn-danger flex-1 px-5 py-3 min-h-[48px] text-base sm:text-lg whitespace-nowrap cursor-pointer';
+    }
+  }
+}
+
 // Inicialización Firebase + Firestore
 let db = null;
+let _dbReadyResolve = null;
+const dbReady = new Promise((resolve) => { _dbReadyResolve = resolve; });
 (async function initFirebase() {
   if (!window.firebaseConfig || typeof firebase === 'undefined') {
     console.warn('Firebase no está disponible o falta firebase_config.js.');
@@ -172,40 +213,11 @@ let db = null;
   } catch (e) {
     console.warn('Firestore no disponible:', e);
   }
-  try {
-    const resultsGrid = document.getElementById('resultsGrid');
-    const resultsSection = (document.body && document.body.dataset) ? document.body.dataset.section : '';
-    if (resultsGrid && resultsSection && USE_REALTIME && db && !window._resultsRealtimeUnsub) {
-      window._resultsRealtimeUnsub = db.collection('votes').onSnapshot(() => renderResults(resultsSection));
-    }
-  } catch {}
+  if (db && typeof _dbReadyResolve === 'function') { try { _dbReadyResolve(); } catch {} }
+  try {} catch {}
 })();
 
-// Utilidades de votos en Firestore
-async function getVoteCount(coverId) {
-  try {
-    if (!db) return 0;
-    const ref = db.collection('votes').doc(coverId);
-    const snap = await ref.get();
-    if (!snap.exists) return 0;
-    const data = snap.data();
-    return Number((data && data.count) || 0);
-  } catch (e) {
-    console.warn('getVoteCount error:', e);
-    return 0;
-  }
-}
-
-async function incrementVote(coverId) {
-  if (!db) throw new Error('Firestore no inicializado');
-  const ref = db.collection('votes').doc(coverId);
-  return db.runTransaction(async (tx) => {
-    const doc = await tx.get(ref);
-    const current = doc.exists ? Number((doc.data() && doc.data().count) || 0) : 0;
-    tx.set(ref, { count: current + 1 }, { merge: true });
-    return current + 1;
-  });
-}
+// SISTEMA DE VOTACIÓN SIMPLE - Sin Firestore, solo localStorage
 
 // Cargar portadas desde JSON
 let coversCache = [];
@@ -277,7 +289,7 @@ async function renderSection(sectionId) {
               <img alt="" class="w-6 h-6 sm:w-7 sm:h-7 rounded object-cover" data-role="mini" style="pointer-events:none; display:inline-block;">
               Ver
             </button>
-            <button class="btn-danger flex-1 px-5 py-3 min-h-[48px] text-base sm:text-lg whitespace-nowrap" data-action="vote">Votar</button>
+            <button class="btn-danger flex-1 px-5 py-3 min-h-[48px] text-base sm:text-lg whitespace-nowrap cursor-pointer" data-action="vote">Votar</button>
           </div>
           <div class="text-center mt-2">
             <span class="text-3xl sm:text-4xl font-bold text-brand" data-role="votes">0</span>
@@ -287,7 +299,7 @@ async function renderSection(sectionId) {
       `;
       coversGrid.appendChild(card);
 
-      // Guarda datos para la delegación
+      // Guarda datos para la delegación (coverId se ajusta más abajo con driveId si existe)
       card.dataset.scope = sectionId;
       card.dataset.file = file;
       card.dataset.author = authorName;
@@ -302,10 +314,22 @@ async function renderSection(sectionId) {
       const driveId = String(item && (item.driveId || extractDriveId(item.driveUrl || '')) || '').trim();
       const dUrl = driveId ? resolveDriveUrl(driveId) : '';
       card.dataset.driveId = driveId;
+      if (driveId) {
+        const prevCid = String(card.dataset.coverId || '').trim();
+        const nextCid = `img_${driveId}`;
+        card.dataset.coverId = nextCid;
+        if (prevCid && prevCid !== nextCid) {
+          const prevVotes = lsGet(`votes_local_${prevCid}`, null);
+          const prevVoted = lsGet(`voted_${prevCid}`, null);
+          if (prevVotes !== null && lsGet(`votes_local_${nextCid}`, null) === null) lsSet(`votes_local_${nextCid}`, prevVotes);
+          if (prevVoted !== null && lsGet(`voted_${nextCid}`, null) === null) lsSet(`voted_${nextCid}`, prevVoted);
+        }
+      }
       if (dUrl) {
         thumbEl.src = dUrl;
         thumbEl.addEventListener('load', () => { miniEl.src = thumbEl.src; });
         card.dataset.imageUrl = dUrl;
+        refreshCardVotes(card);
       } else {
         // Intento de resolución por nombre dentro de la subcarpeta de la sección
         const guessedFile = String(file || '').trim();
@@ -314,9 +338,19 @@ async function renderSection(sectionId) {
           if (idByName) {
             const url2 = resolveDriveUrl(idByName);
             card.dataset.driveId = idByName;
+            const prevCid2 = String(card.dataset.coverId || '').trim();
+            const nextCid2 = `img_${idByName}`;
+            card.dataset.coverId = nextCid2;
+            if (prevCid2 && prevCid2 !== nextCid2) {
+              const prevVotes2 = lsGet(`votes_local_${prevCid2}`, null);
+              const prevVoted2 = lsGet(`voted_${prevCid2}`, null);
+              if (prevVotes2 !== null && lsGet(`votes_local_${nextCid2}`, null) === null) lsSet(`votes_local_${nextCid2}`, prevVotes2);
+              if (prevVoted2 !== null && lsGet(`voted_${nextCid2}`, null) === null) lsSet(`voted_${nextCid2}`, prevVoted2);
+            }
             card.dataset.imageUrl = url2;
             thumbEl.src = url2;
             thumbEl.addEventListener('load', () => { miniEl.src = thumbEl.src; });
+            refreshCardVotes(card);
           } else {
             thumbEl.style.display = 'none';
             headerEl.className = 'h-48 sm:h-64 bg-gray-200 flex items-center justify-center text-gray-500';
@@ -329,38 +363,67 @@ async function renderSection(sectionId) {
         }
       }
 
-      // Votos iniciales y suscripción (con fallback local)
-      const localKey = `votes_local_${coverId}`;
+      // Votos iniciales y suscripción (con fallback local y espera a Firestore)
+      const cidInit = String(card.dataset.coverId || '').trim();
+      const localKey = `votes_local_${cidInit}`;
+      const legacy = localStorage.getItem(`votes_${cidInit}`);
+      if (legacy !== null && lsGet(localKey, null) === null) { lsSet(localKey, legacy); }
       const localCount = Number(lsGet(localKey, '0'));
-      try {
-          const remoteCount = await getVoteCount(coverId);
-          votesEl.textContent = String(Math.max(localCount, Number(remoteCount || 0)));
-      } catch {
-          votesEl.textContent = String(localCount);
-      }
+      votesEl.textContent = String(localCount);
+      // Solo usar contador local - sin Firestore
+      
       const voteBtnInit = card.querySelector('[data-action="vote"]');
       if (voteBtnInit) {
-          let voted = lsGet(`voted_${coverId}`, 'false') === 'true';
-          try { voted = await hasVotedOnline(coverId); } catch {}
-          voteBtnInit.textContent = voted ? 'Quitar voto' : 'Votar';
-          voteBtnInit.disabled = false;
-          lsSet(`voted_${coverId}`, voted ? 'true' : 'false');
+        voteBtnInit.dataset.bound = 'true';
+        const cid = getCid(card, coverId);
+        let voteCount = parseInt(lsGet(`votes_local_${cid}`, '0'));
+        let hasVoted = lsGet(`voted_${cid}`, 'false') === 'true';
+        if (votesEl) {
+          votesEl.textContent = voteCount.toString();
+        }
+        voteBtnInit.textContent = hasVoted ? 'Quitar voto' : 'Votar';
+        if (hasVoted) {
+          voteBtnInit.className = 'btn-primary flex-1 px-5 py-3 min-h-[48px] text-base sm:text-lg whitespace-nowrap cursor-pointer';
+        } else {
+          voteBtnInit.className = 'btn-danger flex-1 px-5 py-3 min-h-[48px] text-base sm:text-lg whitespace-nowrap cursor-pointer';
+        }
+        voteBtnInit.addEventListener('click', function(e) {
+          e.stopPropagation();
+          if (hasVoted) {
+            voteCount = Math.max(0, voteCount - 1);
+            hasVoted = false;
+            lsRemove(`voted_${cid}`);
+            voteBtnInit.textContent = 'Votar';
+            voteBtnInit.className = 'btn-danger flex-1 px-5 py-3 min-h-[48px] text-base sm:text-lg whitespace-nowrap cursor-pointer';
+            incVoteRemote(cid, -1);
+          } else {
+            voteCount = voteCount + 1;
+            hasVoted = true;
+            lsSet(`voted_${cid}`, 'true');
+            voteBtnInit.textContent = 'Quitar voto';
+            voteBtnInit.className = 'btn-primary flex-1 px-5 py-3 min-h-[48px] text-base sm:text-lg whitespace-nowrap cursor-pointer';
+            incVoteRemote(cid, +1);
+          }
+          lsSet(`votes_local_${cid}`, voteCount.toString());
+          votesEl.textContent = voteCount;
+        });
       }
 
-      if (USE_REALTIME && db) {
-          const ref = db.collection('votes').doc(coverId);
-          const unsub = ref.onSnapshot((snap) => {
-              const data = snap.exists ? snap.data() : null;
-              const remote = Number((data && data.count) || 0);
-              votesEl.textContent = String(remote);
-              const voteBtn = card.querySelector('[data-action="vote"]');
-              if (voteBtn) {
-                  const voted = lsGet(`voted_${coverId}`, 'false') === 'true';
-                  voteBtn.textContent = voted ? 'Quitar voto' : 'Votar';
-                  voteBtn.disabled = false;
-              }
-          }, (err) => console.warn('onSnapshot error:', err));
-          voteUnsubs.set(coverId, unsub);
+      if (USE_REALTIME) {
+          const cid = String(card.dataset.driveId ? `img_${card.dataset.driveId}` : (card.dataset.coverId || coverId || '')).trim();
+          const subscribe = () => {
+            const ref = db.collection('votes').doc(cid);
+            const unsub = ref.onSnapshot((snap) => {
+                const data = snap.exists ? snap.data() : null;
+                const remote = Number((data && data.count) || 0);
+                const localVal = Number(lsGet(`votes_local_${cid}`, '0'));
+                const merged = Math.max(localVal, remote);
+                votesEl.textContent = String(merged);
+                lsSet(`votes_local_${cid}`, String(merged));
+            }, (err) => console.warn('onSnapshot error:', err));
+            voteUnsubs.set(cid, unsub);
+          };
+          if (db) subscribe(); else dbReady.then(() => subscribe());
       }
   });
 
@@ -377,13 +440,14 @@ async function renderSection(sectionId) {
   }
 
   covers.forEach(async (cover) => {
-    const votedKey = `voted_${cover.id}`;
-    let votedLocal = lsGet(votedKey, 'false') === 'true';
-
     const titleDetected = `${sectionNames[sectionId] || sectionId} (boceto)`;
 
     const card = document.createElement('article');
     card.className = 'group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow';
+    card.dataset.coverId = cover.id;
+
+    const cidBase = (card.dataset.driveId ? `img_${card.dataset.driveId}` : (String(card.dataset.coverId||'').trim() || cover.id));
+    let votedLocal = lsGet(`voted_${cidBase}`, 'false') === 'true';
     card.innerHTML = `
       <div class="h-56 sm:h-72 bg-gray-100 overflow-hidden relative" data-role="header">
         <img alt="Miniatura de ${titleDetected}" loading="lazy"
@@ -399,7 +463,7 @@ async function renderSection(sectionId) {
             <img alt="" class="w-6 h-6 sm:w-7 sm:h-7 rounded object-cover" data-role="mini">
             Ver
           </button>
-          <button class="flex-1 px-5 py-3 min-h-[48px] bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-base sm:text-lg whitespace-nowrap" data-action="vote">Votar</button>
+          <button class="flex-1 px-5 py-3 min-h-[48px] bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-base sm:text-lg whitespace-nowrap cursor-pointer" data-action="vote">Votar</button>
         </div>
         <div class="text-center">
           <span class="text-3xl sm:text-4xl font-bold text-indigo-600" data-role="votes">0</span>
@@ -436,34 +500,31 @@ async function renderSection(sectionId) {
     const viewBtn = card.querySelector('[data-action="view"]');
     const voteBtn = card.querySelector('[data-action="vote"]');
 
-    // Votos iniciales (con fallback local)
-    const localKey = `votes_local_${cover.id}`;
+    // Votos iniciales rápidos y carga diferida
+    const localKey = `votes_local_${cidBase}`;
+    const legacy2 = localStorage.getItem(`votes_${cidBase}`);
+    if (legacy2 !== null && lsGet(localKey, null) === null) { lsSet(localKey, legacy2); }
     const localCount = Number(lsGet(localKey, '0'));
-    try {
-        const count = await getVoteCount(cover.id);
-        votesEl.textContent = String(Math.max(localCount, Number(count || 0)));
-    } catch {
-        votesEl.textContent = String(localCount);
-    }
-    // Deshabilitar si ya votó local/online
-    try {
-      const votedRemote = await hasVotedOnline(cover.id);
-      votedLocal = votedLocal || votedRemote;
-    } catch {}
+    votesEl.textContent = String(localCount);
     voteBtn.disabled = false;
-    voteBtn.textContent = votedLocal ? 'Quitar voto' : 'Votar';
-
-    // Suscripción remota si hay Firebase
-    if (USE_REALTIME && db) {
-        const ref = db.collection('votes').doc(cover.id);
-        const unsub = ref.onSnapshot((snap) => {
-            const data = (snap && typeof snap.data === 'function') ? snap.data() : null;
-            const count = (snap && snap.exists && data && typeof data.count !== 'undefined') ? Number(data.count) : 0;
-            votesEl.textContent = String(count);
-            voteBtn.disabled = votedLocal;
-        }, (err) => console.warn('onSnapshot error:', err));
-        voteUnsubs.set(cover.id, unsub);
-    }
+    const cidChk = (card.dataset.driveId ? `img_${card.dataset.driveId}` : (card.dataset.coverId || cover.id));
+    const localVotedState = lsGet(`voted_${cidChk}`, 'false') === 'true';
+    voteBtn.textContent = localVotedState ? 'Quitar voto' : 'Votar';
+    // Solo usar contador local - sin Firestore
+    votesEl.textContent = String(localCount);
+    
+    const observer2 = new IntersectionObserver(async (entries, obs) => {
+      if (!entries.some(e => e.isIntersecting)) return;
+      // Solo usar contador local - sin Firestore
+      try {
+        const cidChk = (card.dataset.driveId ? `img_${card.dataset.driveId}` : (card.dataset.coverId || cover.id));
+        const localVotedNow = lsGet(`voted_${cidChk}`, 'false') === 'true';
+        voteBtn.textContent = localVotedNow ? 'Quitar voto' : 'Votar';
+        lsSet(`voted_${cidChk}`, localVotedNow ? 'true' : 'false');
+      } catch {}
+      obs.disconnect();
+    }, { root: null, threshold: 0.2 });
+    observer2.observe(card);
 
     infoBtn.addEventListener('click', () => showInfo({
       Título: titleDetected,
@@ -473,27 +534,52 @@ async function renderSection(sectionId) {
       Archivo: (currentImageSrc || cover.imagePath || '—')
     }));
 
-    viewBtn.addEventListener('click', async () => {
-      let fullUrl = currentImageSrc;
-      if (!fullUrl) fullUrl = await resolveThumbnailUrl(cover);
-      if (!fullUrl) { alert('No se pudo abrir la imagen.'); return; }
-      openImageViewer(fullUrl, titleDetected);
-    });
+      viewBtn.addEventListener('click', async () => {
+        let fullUrl = currentImageSrc;
+        if (!fullUrl) fullUrl = await resolveThumbnailUrl(cover);
+        if (!fullUrl) { alert('No se pudo abrir la imagen.'); return; }
+        openImageViewer(fullUrl, titleDetected);
+      });
 
-    voteBtn.addEventListener('click', async () => {
-      if (!isVotingOpen(sectionId)) { showVotingLock(sectionId); return; }
-      try {
-        voteBtn.disabled = true;
-        const newVotes = await toggleVoteWithUserLock(cover.id);
-        votesEl.textContent = String(newVotes);
-        votedLocal = !votedLocal;
-        lsSet(votedKey, votedLocal ? 'true' : 'false');
-      } catch (e) {
-        alert((e && e.message) ? e.message : 'No se pudo alternar el voto.');
-      } finally {
-        voteBtn.disabled = false;
+      // NUEVO SISTEMA DE VOTACIÓN SIMPLE
+      const voteBtn2 = card.querySelector('[data-action="vote"]');
+      if (voteBtn2) {
+        voteBtn2.dataset.bound = 'true';
+        const cid = getCid(card, cidBase);
+        let voteCount = parseInt(lsGet(`votes_local_${cid}`, '0'));
+        let hasVoted = lsGet(`voted_${cid}`, 'false') === 'true';
+        if (votesEl) {
+          votesEl.textContent = voteCount.toString();
+        }
+        voteBtn2.textContent = hasVoted ? 'Quitar voto' : 'Votar';
+        if (hasVoted) {
+          voteBtn2.className = 'flex-1 px-5 py-3 min-h-[48px] bg-red-600 text-white rounded-lg hover:bg-red-700 text-base sm:text-lg whitespace-nowrap cursor-pointer';
+        } else {
+          voteBtn2.className = 'flex-1 px-5 py-3 min-h-[48px] bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-base sm:text-lg whitespace-nowrap cursor-pointer';
+        }
+        voteBtn2.addEventListener('click', function(e) {
+          e.stopPropagation();
+          if (hasVoted) {
+            voteCount = Math.max(0, voteCount - 1);
+            hasVoted = false;
+            lsRemove(`voted_${cid}`);
+            voteBtn2.textContent = 'Votar';
+            voteBtn2.className = 'flex-1 px-5 py-3 min-h-[48px] bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-base sm:text-lg whitespace-nowrap cursor-pointer';
+            incVoteRemote(cid, -1);
+          } else {
+            voteCount = voteCount + 1;
+            hasVoted = true;
+            lsSet(`voted_${cid}`, 'true');
+            voteBtn2.textContent = 'Quitar voto';
+            voteBtn2.className = 'flex-1 px-5 py-3 min-h-[48px] bg-red-600 text-white rounded-lg hover:bg-red-700 text-base sm:text-lg whitespace-nowrap cursor-pointer';
+            incVoteRemote(cid, +1);
+          }
+          lsSet(`votes_local_${cid}`, voteCount.toString());
+          votesEl.textContent = voteCount;
+        });
       }
-    });
+
+    // Listener de votar centralizado arriba (voteBtn2)
   });
 }
 
@@ -883,64 +969,11 @@ function getTitleFromPath(path) {
 // Declarar voteUnsubs ANTES de usarlo en renderSection
 const voteUnsubs = new Map();
 
-async function hasVotedOnline(coverId) {
-    if (!db || typeof firebase === 'undefined' || !firebase.auth) return false;
-    const user = firebase.auth().currentUser;
-    if (!user) return false;
-    const voteId = `${coverId}_${user.uid}`;
-    const ref = db.collection('userVotes').doc(voteId);
-    const snap = await ref.get();
-    return !!(snap && snap.exists);
-}
 
-// NUEVO: alterna voto con bloqueo por usuario (suma/resta y crea/borra userVotes)
-async function toggleVoteWithUserLock(coverId) {
-    // Respaldo local si Firebase no está disponible
-    if (!db || typeof firebase === 'undefined' || !firebase.auth) {
-        const localKey = `votes_local_${coverId}`;
-        const votedKey = `voted_${coverId}`;
-        const currentLocal = Number(lsGet(localKey, '0'));
-        const isVoted = lsGet(votedKey, 'false') === 'true';
-        const nextCount = isVoted ? Math.max(0, currentLocal - 1) : currentLocal + 1;
-        lsSet(localKey, String(nextCount));
-        lsSet(votedKey, isVoted ? 'false' : 'true');
-        return nextCount;
-    }
-    if (!firebase.auth().currentUser) {
-        try { await firebase.auth().signInAnonymously(); } catch {}
-    }
 
-    const user = firebase.auth().currentUser;
-    if (!user) throw new Error('No autenticado. Activa Auth anónima en Firebase.');
-    const voteId = `${coverId}_${user.uid}`;
-    const votesRef = db.collection('votes').doc(coverId);
-    const userVoteRef = db.collection('userVotes').doc(voteId);
 
-    const result = await db.runTransaction(async (tx) => {
-        const userDoc = await tx.get(userVoteRef);
-        const voteSnap = await tx.get(votesRef);
-        const voteData = (voteSnap && typeof voteSnap.data === 'function') ? voteSnap.data() : null;
-        const current = (voteSnap && voteSnap.exists && voteData && typeof voteData.count !== 'undefined') ? Number(voteData.count) : 0;
 
-        if (userDoc.exists) {
-            // Quitar voto
-            tx.delete(userVoteRef);
-            tx.set(votesRef, { count: Math.max(0, current - 1) }, { merge: true });
-            return Math.max(0, current - 1);
-        } else {
-            // Registrar voto
-            tx.set(userVoteRef, {
-                coverId,
-                uid: user.uid,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            });
-            tx.set(votesRef, { count: current + 1 }, { merge: true });
-            return current + 1;
-        }
-    });
 
-    return result;
-}
 
 // Cargar índice de imágenes para Portada
 async function loadSectionIndex(sectionId) {
@@ -1315,12 +1348,13 @@ async function fetchFirstJSON(urls) {
 }
 
 // Delegación: un único listener para Info / Ver / Votar (solo Portada)
-document.addEventListener('click', async (ev) => {
-  const btn = ev.target.closest('[data-action]');
-  if (!btn) return;
+  document.addEventListener('click', async (ev) => {
+    const btn = ev.target.closest('[data-action]');
+    if (!btn) return;
+    if (btn.dataset && btn.dataset.bound === 'true') return;
 
   const card = btn.closest('article');
-  if (!card || !card.dataset.scope) return;
+  if (!card) return;
 
   const action = btn.dataset.action;
   const file = card.dataset.file || '';
@@ -1355,19 +1389,23 @@ document.addEventListener('click', async (ev) => {
   }
 
   if (action === 'vote') {
-    const sectionScope = card.dataset.scope || '';
-    if (!isVotingOpen(sectionScope)) { showVotingLock(sectionScope); return; }
-    btn.disabled = true;
-    try {
-      const newVotes = await toggleVoteWithUserLock(coverId);
-      if (votesEl) votesEl.textContent = String(newVotes);
-      const nowVoted = await hasVotedOnline(coverId)
-        .catch(() => lsGet(`voted_${coverId}`, 'false') === 'true');
-      btn.textContent = nowVoted ? 'Quitar voto' : 'Votar';
-    } catch (e) {
-      console.warn('Delegated toggle vote error:', e);
-    } finally {
-      btn.disabled = false;
+    const cid = getCid(card, coverId);
+    const wasVoted = lsGet(`voted_${cid}`, 'false') === 'true';
+    const currentCount = parseInt(lsGet(`votes_local_${cid}`, '0'));
+    if (wasVoted) {
+      const newCount = Math.max(0, currentCount - 1);
+      lsSet(`votes_local_${cid}`, newCount.toString());
+      lsRemove(`voted_${cid}`);
+      if (votesEl) votesEl.textContent = newCount.toString();
+      btn.textContent = 'Votar';
+      incVoteRemote(cid, -1);
+    } else {
+      const newCount = currentCount + 1;
+      lsSet(`votes_local_${cid}`, newCount.toString());
+      lsSet(`voted_${cid}`, 'true');
+      if (votesEl) votesEl.textContent = newCount.toString();
+      btn.textContent = 'Quitar voto';
+      incVoteRemote(cid, +1);
     }
     return;
   }
@@ -1397,6 +1435,20 @@ function applyTheme(theme) {
   }
 })();
 
+// Config global de feeds de Drive (merges con existente)
+(function initDriveFeeds(){
+  const base = 'https://script.google.com/macros/s/AKfycbwGUawSyyK9JSlOu-sSt2dFqCMo51jFZvWMa0nGoQQmQZGZQCxpTm_HvOF3JdeVxu4wjw/exec?folderId=';
+  const feeds = {
+    portada: base + '1TvO2V-5H_346I8go7Pm2T9IN6qw6FUzL',
+    seccion1: base + '11JYPjv-3-Jc7VwMFdxd9QPi1LyRk7NoS',
+    seccion2: base + '1PUTDzNC0oph2hAu8_9a7vVNHgqYsTQWq',
+    seccion3: base + '1V7VlLsN6cfrrXCUCMJMklW7mpt5TO3kd',
+    seccion4: base + '1CecZC0eskhRyjJM4EDMQHheAjH9b0m5Y',
+    seccion5: base + '1JJooLvT2urhKKuZjhICPbX9QcTEUSm7V'
+  };
+  window.driveFeedUrls = Object.assign({}, window.driveFeedUrls || {}, feeds);
+})();
+
 function getNextVotingTime() {
   const now = new Date();
   let year = now.getFullYear();
@@ -1421,55 +1473,21 @@ function getNextVotingTime() {
   return base;
 }
 
-function isVotingOpen(sectionId) {
-  const override = (window && window.votingOverride) ? String(window.votingOverride).toLowerCase() : '';
-  if (override === 'open') return true;
-  if (override === 'close') return false;
-  const target = getNextVotingTime();
-  return new Date() >= target;
-}
-
-function showVotingLock(sectionId) {
-  const lock = document.getElementById('voteLock');
-  const countdownEl = document.getElementById('voteCountdown');
-  if (!lock || !countdownEl) return;
-  if (sectionId !== 'seccion1' && sectionId !== 'portada') { lock.classList.add('hidden'); return; }
-  const target = getNextVotingTime();
-  lock.classList.remove('hidden');
-  let active = true;
-  const closeVotingLock = () => { active = false; lock.classList.add('hidden'); };
-  const closeBtn = document.getElementById('closeVoteLockBtn');
-  if (closeBtn) closeBtn.onclick = closeVotingLock;
-  lock.addEventListener('click', (e) => { if (e.target === lock) closeVotingLock(); });
-  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeVotingLock(); }, { once: true });
-  const tick = () => {
-    if (!active) return;
-    const now = new Date();
-    let diff = target - now;
-    if (diff <= 0) {
-      countdownEl.textContent = '00:00:00';
-      closeVotingLock();
-      return;
-    }
-    const d = Math.floor(diff / 86400000);
-    diff %= 86400000;
-    const h = Math.floor(diff / 3600000);
-    diff %= 3600000;
-    const m = Math.floor(diff / 60000);
-    const s = Math.floor((diff % 60000) / 1000);
-    const pad = (n) => String(n).padStart(2, '0');
-    countdownEl.textContent = (d > 0 ? `${d}d ` : '') + `${pad(h)}:${pad(m)}:${pad(s)}`;
-    requestAnimationFrame(() => setTimeout(tick, 250));
-  };
-  tick();
-}
 async function renderResults(sectionId) {
   const resultsGrid = document.getElementById('resultsGrid');
   const titleEl = document.getElementById('resultsTitle');
   if (!resultsGrid) return;
-  if (titleEl) titleEl.textContent = (sectionId === 'portada') ? 'Resultados Portada' : 'Resultados Sección 1';
+  if (titleEl) titleEl.textContent = (sectionId === 'portada') ? 'Resultados Portada' : `Resultados ${sectionNames[sectionId] || sectionId}`;
   resultsGrid.innerHTML = '';
-  resultsGrid.className = 'min-h-[60vh] flex items-center justify-center';
+  resultsGrid.className = '';
+
+  // Cancelar suscripciones previas de resultados
+  if (window._resultsUnsubs && window._resultsUnsubs.size) {
+    for (const u of window._resultsUnsubs.values()) { try { u(); } catch {} }
+    window._resultsUnsubs.clear();
+  } else {
+    window._resultsUnsubs = new Map();
+  }
 
   const items = await loadImageItems(sectionId);
   if (!items.length) {
@@ -1477,66 +1495,88 @@ async function renderResults(sectionId) {
     return;
   }
 
-  const entries = [];
-  for (const it of items) {
+  const entries = items.map((it) => {
     const file = String(it.file || '').trim();
     const authorName = it.author || getTitleFromPath(file);
-    const coverId = `img_${getTitleFromPath(file).toLowerCase().replace(/\s+/g, '_')}`;
-    const localCount = Number(lsGet(`votes_local_${coverId}`, '0'));
     const driveId = String(it.driveId || extractDriveId(it.driveUrl || '') || '').trim();
-    entries.push({ file, author: authorName, coverId, votes: localCount, driveId });
-  }
-  const remoteCounts = await Promise.all(entries.map(e => getVoteCount(e.coverId).catch(() => 0)));
-  for (let i = 0; i < entries.length; i++) {
-    const rc = Number(remoteCounts[i] || 0);
-    entries[i].votes = Math.max(entries[i].votes, rc);
-  }
-  entries.sort((a,b) => b.votes - a.votes);
-  const podium = entries.slice(0,3);
+    const coverId = `img_${driveId || getTitleFromPath(file).toLowerCase().replace(/\s+/g, '_')}`;
+    const localCount = Number(lsGet(`votes_local_${coverId}`, '0'));
+    return { file, author: authorName, coverId, votes: localCount, driveId };
+  });
 
-  const layout = document.createElement('div');
-  layout.className = 'grid grid-cols-1 sm:grid-cols-3 gap-8 items-end max-w-6xl mx-auto py-8';
-
-  function podiumCard(entry, rank) {
-    const card = document.createElement('div');
-    const sizeClass = rank === 1 ? 'sm:col-span-1 sm:order-2' : (rank === 2 ? 'sm:order-1' : 'sm:order-3');
-    card.className = `bg-white rounded-2xl shadow-lg p-6 sm:p-8 text-center ${sizeClass}`;
-    const crown = rank === 1 ? '🥇' : (rank === 2 ? '🥈' : '🥉');
-    const dUrl = entry.driveId ? resolveDriveUrl(entry.driveId) : '';
-    const titleLabel = `${sectionNames[sectionId] || sectionId} (boceto)`;
-    card.innerHTML = `
-      <div class="text-6xl sm:text-7xl">${crown}</div>
-      <h3 class="text-2xl sm:text-3xl font-bold mt-3">${entry.author}</h3>
-      <p class="text-gray-600">${titleLabel}</p>
-      <div class="mt-4 text-3xl sm:text-4xl font-extrabold text-indigo-600">${entry.votes} votos</div>
-      <div class="mt-4 flex justify-center">
-        <button class="btn-primary text-lg px-6 py-3" data-action="view" data-file="${entry.file}" data-author="${entry.author}" data-drive-id="${entry.driveId || ''}" data-image-url="${dUrl}">Ver</button>
+  function draw() {
+    const sorted = [...entries].sort((a,b) => b.votes - a.votes).slice(0,3);
+    const total = entries.reduce((sum, e) => sum + (Number(e.votes)||0), 0);
+    const crowns = ['🥇','🥈','🥉'];
+    const cards = sorted.map((e, i) => {
+      const dUrl = e.driveId ? resolveDriveUrl(e.driveId) : '';
+      const sizeClass = i === 0 ? 'sm:col-span-1 sm:order-2' : (i === 1 ? 'sm:order-1' : 'sm:order-3');
+      return `
+        <div class="bg-white rounded-2xl shadow-lg p-6 sm:p-8 text-center ${sizeClass}">
+          <div class="text-5xl">${crowns[i]}</div>
+          <div class="mt-3 w-full overflow-hidden rounded-xl bg-gray-100">
+            ${dUrl ? `<img src="${dUrl}" alt="${e.author}" loading="lazy" class="w-full h-56 object-cover">` : ''}
+          </div>
+          <h3 class="text-2xl sm:text-3xl font-bold mt-3">${e.author}</h3>
+          <div class="mt-2 text-2xl font-extrabold text-indigo-600">${e.votes} votos</div>
+          <div class="mt-4 flex justify-center">
+            <button class="btn-primary text-lg px-6 py-3" data-action="view" data-file="${e.file}" data-author="${e.author}" data-drive-id="${e.driveId || ''}" data-image-url="${dUrl}">Ver</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+    resultsGrid.innerHTML = `
+      <div class="max-w-6xl mx-auto">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-xl font-bold">${sectionNames[sectionId] || sectionId}</h3>
+          <div class="text-sm text-gray-600">Total votos: <span class="font-semibold">${total}</span></div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-8 items-end py-4">
+          ${cards || '<div class="text-center text-gray-500">Sin votos</div>'}
+        </div>
       </div>
     `;
-    layout.appendChild(card);
+    const sel = document.getElementById('resultsSectionSelect');
+    if (sel) { try { sel.value = sectionId; } catch {} }
   }
 
-  if (podium.length) {
-    podium.forEach((e, i) => podiumCard(e, i+1));
-  } else {
-    layout.innerHTML = '<div class="text-center text-gray-500">Sin votos</div>';
+  draw();
+
+  if (!resultsGrid.dataset.viewBound) {
+    resultsGrid.addEventListener('click', async (ev) => {
+      const btn = ev.target.closest('[data-action="view"]');
+      if (!btn) return;
+      const file = btn.getAttribute('data-file') || '';
+      const author = btn.getAttribute('data-author') || '';
+      const dId = btn.getAttribute('data-drive-id') || '';
+      const dUrlAttr = btn.getAttribute('data-image-url') || '';
+      let url = dUrlAttr || (dId ? resolveDriveUrl(dId) : '');
+      if (!url) url = await resolveImageFromDirs(file, author, getTitleFromPath(file));
+      if (!url) { alert('No se pudo abrir la imagen.'); return; }
+      const currentSection = (document.body && document.body.dataset) ? (document.body.dataset.section || sectionId) : sectionId;
+      const titleLabel = `${sectionNames[currentSection] || currentSection} (boceto)`;
+      openImageViewer(url, titleLabel);
+    });
+    resultsGrid.dataset.viewBound = 'true';
   }
 
-  resultsGrid.appendChild(layout);
-
-  layout.addEventListener('click', async (ev) => {
-    const btn = ev.target.closest('[data-action="view"]');
-    if (!btn) return;
-    const file = btn.getAttribute('data-file') || '';
-    const author = btn.getAttribute('data-author') || '';
-    const dId = btn.getAttribute('data-drive-id') || '';
-    const dUrlAttr = btn.getAttribute('data-image-url') || '';
-    let url = dUrlAttr || (dId ? resolveDriveUrl(dId) : '');
-    if (!url) url = await resolveImageFromDirs(file, author, getTitleFromPath(file));
-    if (!url) { alert('No se pudo abrir la imagen.'); return; }
-    const titleLabel = `${sectionNames[sectionId] || sectionId} (boceto)`;
-    openImageViewer(url, titleLabel);
-  });
+  if (USE_REALTIME && db) {
+    entries.forEach((e) => {
+      const id = e.coverId;
+      if (window._resultsUnsubs.has(id)) return;
+      const ref = db.collection('votes').doc(id);
+      const unsub = ref.onSnapshot((snap) => {
+        const data = snap.exists ? snap.data() : null;
+        const remote = Number((data && data.count) || 0);
+        const localVal = Number(lsGet(`votes_local_${id}`, '0'));
+        const merged = Math.max(localVal, remote);
+        e.votes = merged;
+        lsSet(`votes_local_${id}`, String(merged));
+        draw();
+      }, (err) => console.warn('onSnapshot resultados error:', err));
+      window._resultsUnsubs.set(id, unsub);
+    });
+  }
 }
 const DRIVE_ONLY = true;
 const USE_REALTIME = true;
