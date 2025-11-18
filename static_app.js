@@ -120,6 +120,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const ms = Number(window.autoRefreshResultsMs) || 5000;
     window._resultsRefreshTimer = setInterval(() => renderResults(resultsSection), ms);
   }
+  if (resultsGrid && resultsSection && USE_REALTIME && db && !window._resultsRealtimeUnsub) {
+    try {
+      window._resultsRealtimeUnsub = db.collection('votes').onSnapshot(() => renderResults(resultsSection));
+    } catch {}
+  }
   const siteLogo = document.getElementById('siteLogo');
   const logoId = (window && window.siteLogoDriveId) ? window.siteLogoDriveId : '';
   const onGithub = String(window.location.hostname || '').endsWith('.github.io');
@@ -166,6 +171,13 @@ let db = null;
   } catch (e) {
     console.warn('Firestore no disponible:', e);
   }
+  try {
+    const resultsGrid = document.getElementById('resultsGrid');
+    const resultsSection = (document.body && document.body.dataset) ? document.body.dataset.section : '';
+    if (resultsGrid && resultsSection && USE_REALTIME && db && !window._resultsRealtimeUnsub) {
+      window._resultsRealtimeUnsub = db.collection('votes').onSnapshot(() => renderResults(resultsSection));
+    }
+  } catch {}
 })();
 
 // Utilidades de votos en Firestore
@@ -1463,23 +1475,13 @@ async function renderResults(sectionId) {
     const driveId = String(it.driveId || extractDriveId(it.driveUrl || '') || '').trim();
     entries.push({ file, author: authorName, coverId, votes: localCount, driveId });
   }
-  entries.sort((a,b) => b.votes - a.votes);
-  const candidates = entries.slice(0, 10);
-  async function safeGetVoteCount(id, timeoutMs = 1500) {
-    try {
-      return await Promise.race([
-        getVoteCount(id),
-        new Promise((resolve) => setTimeout(() => resolve(0), timeoutMs))
-      ]);
-    } catch { return 0; }
-  }
-  const remoteCounts = await Promise.all(candidates.map(e => safeGetVoteCount(e.coverId)));
-  for (let i = 0; i < candidates.length; i++) {
+  const remoteCounts = await Promise.all(entries.map(e => getVoteCount(e.coverId).catch(() => 0)));
+  for (let i = 0; i < entries.length; i++) {
     const rc = Number(remoteCounts[i] || 0);
-    candidates[i].votes = Math.max(candidates[i].votes, rc);
+    entries[i].votes = Math.max(entries[i].votes, rc);
   }
-  candidates.sort((a,b) => b.votes - a.votes);
-  const podium = candidates.slice(0,3);
+  entries.sort((a,b) => b.votes - a.votes);
+  const podium = entries.slice(0,3);
 
   const layout = document.createElement('div');
   layout.className = 'grid grid-cols-1 sm:grid-cols-3 gap-8 items-end max-w-6xl mx-auto py-8';
