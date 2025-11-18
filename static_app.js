@@ -127,18 +127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (dUrl) siteLogo.src = dUrl;
   }
 
-  try {
-    await dbReady;
-    const doneD = localStorage.getItem('votes_remote_reset_author_diana_v1');
-    if (!doneD && db && typeof resetVotesByAuthor === 'function') {
-      const sections = ['portada','seccion1','seccion2','seccion3','seccion4','seccion5'];
-      for (const s of sections) {
-        try { await resetVotesByAuthor(s, 'Diana Gonzalez'); } catch {}
-        try { await resetVotesByAuthor(s, 'Diana Gonzales'); } catch {}
-      }
-      localStorage.setItem('votes_remote_reset_author_diana_v1', 'true');
-    }
-  } catch {}
+  
 
   const sectionSelect = document.getElementById('resultsSectionSelect');
   if (sectionSelect && resultsGrid) {
