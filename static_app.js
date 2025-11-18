@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
   route();
   if (!window.votingOverride) window.votingOverride = 'open';
   const lockEl = document.getElementById('voteLock');
-  if (lockEl) lockEl.classList.add('hidden');
+  if (lockEl) { try { lockEl.classList.add('hidden'); lockEl.style.display = 'none'; lockEl.remove(); } catch {} }
   const sectionAttr = (document.body && document.body.dataset) ? document.body.dataset.section : '';
   if (sectionAttr) renderSection(sectionAttr);
   const resultsGrid = document.getElementById('resultsGrid');
