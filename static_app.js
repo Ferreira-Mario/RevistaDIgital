@@ -137,23 +137,6 @@ document.addEventListener('DOMContentLoaded', () => {
       renderResults(val);
     });
   }
-
-  try {
-    const sp = new URLSearchParams(window.location.search || '');
-    const rv = sp.get('resetVotes');
-    if (rv) {
-      if (rv === 'all') {
-        try {
-          const keys = Object.keys(localStorage);
-          for (const k of keys) { if (k.startsWith('votes_local_') || k.startsWith('voted_')) lsRemove(k); }
-        } catch {}
-        for (const sec of SECTION_LIST) { try { resetVotesForSection(sec); } catch {} }
-      } else {
-        await resetVotesForSection(rv);
-      }
-      if (resultsGrid) renderResults((document.body && document.body.dataset && document.body.dataset.section) || resultsSection || 'portada');
-    }
-  } catch {}
 });
 
 function lsGet(key, fallback = null) {
@@ -1597,19 +1580,3 @@ async function renderResults(sectionId) {
 }
 const DRIVE_ONLY = true;
 const USE_REALTIME = true;
-const SECTION_LIST = ['portada','seccion1','seccion2','seccion3','seccion4','seccion5'];
-async function resetVotesForSection(sectionId) {
-  try {
-    const items = await loadImageItems(sectionId);
-    for (const it of items) {
-      const file = String(it.file || '').trim();
-      const driveId = String(it.driveId || extractDriveId(it.driveUrl || '') || '').trim();
-      const coverId = `img_${driveId || getTitleFromPath(file).toLowerCase().replace(/\s+/g, '_')}`;
-      lsSet(`votes_local_${coverId}`, '0');
-      lsRemove(`voted_${coverId}`);
-      if (db) {
-        try { await db.collection('votes').doc(coverId).set({ count: 0 }, { merge: true }); } catch {}
-      }
-    }
-  } catch {}
-}
