@@ -109,7 +109,8 @@ function route() {
 }
 window.addEventListener('hashchange', route);
 // Inicializa la vista al cargar (router si hay vistas) y render directo si se especifica sección
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  try { await dbReady; if (db) { await resetVotesAllDocs(); } } catch {}
   route();
   if (!window.votingOverride) window.votingOverride = 'open';
   const lockEl = document.getElementById('voteLock');
@@ -164,6 +165,8 @@ function getCid(card, fallbackId) {
 
 async function incVoteRemote(cid, delta) {
   try {
+    const USE_REMOTE_VOTES = false;
+    if (!USE_REMOTE_VOTES) return;
     if (!db || typeof firebase === 'undefined') return;
     const ref = db.collection('votes').doc(cid);
     await ref.set({ count: firebase.firestore.FieldValue.increment(delta) }, { merge: true });
@@ -219,8 +222,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const sec = qs.get('resetSection');
     if (sec && typeof window.resetVotesSection === 'function') { await window.resetVotesSection(sec); }
+    const sec2 = qs.get('section');
+    const auth = qs.get('resetAuthor');
+    if (sec2 && auth && typeof window.resetVotesByAuthor === 'function') { await window.resetVotesByAuthor(sec2, auth); }
   } catch {}
 });
+
+function _norm(s) {
+  return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+async function resetVotesByAuthor(sectionId, authorQuery) {
+  try {
+    const q = _norm(authorQuery);
+    const items = await loadImageItems(sectionId);
+    let updated = 0;
+    for (const it of items) {
+      const a = _norm(it.author || getTitleFromPath(String(it.file||'')));
+      if (!a || !q || a.indexOf(q) === -1) continue;
+      const driveId = String(it.driveId || extractDriveId(it.driveUrl || '') || '').trim();
+      const coverId = `img_${driveId || getTitleFromPath(String(it.file||'')).toLowerCase().replace(/\s+/g, '_')}`;
+      try { if (db) { await db.collection('votes').doc(coverId).set({ count: 0 }, { merge: true }); } } catch {}
+      lsRemove(`votes_local_${coverId}`);
+      lsRemove(`voted_${coverId}`);
+      updated++;
+    }
+    return updated;
+  } catch { return 0; }
+}
+
+window.resetVotesByAuthor = resetVotesByAuthor;
 
 function refreshCardVotes(card) {
   if (!card) return;
@@ -418,8 +449,6 @@ async function renderSection(sectionId) {
       // Votos iniciales y suscripción (con fallback local y espera a Firestore)
       const cidInit = String(card.dataset.coverId || '').trim();
       const localKey = `votes_local_${cidInit}`;
-      const legacy = localStorage.getItem(`votes_${cidInit}`);
-      if (legacy !== null && lsGet(localKey, null) === null) { lsSet(localKey, legacy); }
       const localCount = Number(lsGet(localKey, '0'));
       votesEl.textContent = String(localCount);
       // Solo usar contador local - sin Firestore
@@ -554,8 +583,6 @@ async function renderSection(sectionId) {
 
     // Votos iniciales rápidos y carga diferida
     const localKey = `votes_local_${cidBase}`;
-    const legacy2 = localStorage.getItem(`votes_${cidBase}`);
-    if (legacy2 !== null && lsGet(localKey, null) === null) { lsSet(localKey, legacy2); }
     const localCount = Number(lsGet(localKey, '0'));
     votesEl.textContent = String(localCount);
     voteBtn.disabled = false;
@@ -1631,4 +1658,4 @@ async function renderResults(sectionId) {
   }
 }
 const DRIVE_ONLY = true;
-const USE_REALTIME = true;
+const USE_REALTIME = false;
