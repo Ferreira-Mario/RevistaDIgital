@@ -168,6 +168,7 @@ let db = null;
   }
   try {
     db = firebase.firestore();
+    try { await db.enablePersistence({ synchronizeTabs: true }); } catch {}
   } catch (e) {
     console.warn('Firestore no disponible:', e);
   }
@@ -339,9 +340,11 @@ async function renderSection(sectionId) {
       }
       const voteBtnInit = card.querySelector('[data-action="vote"]');
       if (voteBtnInit) {
-          const voted = lsGet(`voted_${coverId}`, 'false') === 'true';
+          let voted = lsGet(`voted_${coverId}`, 'false') === 'true';
+          try { voted = await hasVotedOnline(coverId); } catch {}
           voteBtnInit.textContent = voted ? 'Quitar voto' : 'Votar';
           voteBtnInit.disabled = false;
+          lsSet(`voted_${coverId}`, voted ? 'true' : 'false');
       }
 
       if (USE_REALTIME && db) {
@@ -443,7 +446,12 @@ async function renderSection(sectionId) {
         votesEl.textContent = String(localCount);
     }
     // Deshabilitar si ya votó local/online
-    voteBtn.disabled = votedLocal;
+    try {
+      const votedRemote = await hasVotedOnline(cover.id);
+      votedLocal = votedLocal || votedRemote;
+    } catch {}
+    voteBtn.disabled = false;
+    voteBtn.textContent = votedLocal ? 'Quitar voto' : 'Votar';
 
     // Suscripción remota si hay Firebase
     if (USE_REALTIME && db) {
@@ -888,7 +896,7 @@ async function hasVotedOnline(coverId) {
 // NUEVO: alterna voto con bloqueo por usuario (suma/resta y crea/borra userVotes)
 async function toggleVoteWithUserLock(coverId) {
     // Respaldo local si Firebase no está disponible
-    if (!db || typeof firebase === 'undefined' || !firebase.auth || !firebase.auth().currentUser) {
+    if (!db || typeof firebase === 'undefined' || !firebase.auth) {
         const localKey = `votes_local_${coverId}`;
         const votedKey = `voted_${coverId}`;
         const currentLocal = Number(lsGet(localKey, '0'));
@@ -897,6 +905,9 @@ async function toggleVoteWithUserLock(coverId) {
         lsSet(localKey, String(nextCount));
         lsSet(votedKey, isVoted ? 'false' : 'true');
         return nextCount;
+    }
+    if (!firebase.auth().currentUser) {
+        try { await firebase.auth().signInAnonymously(); } catch {}
     }
 
     const user = firebase.auth().currentUser;
