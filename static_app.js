@@ -110,7 +110,6 @@ function route() {
 window.addEventListener('hashchange', route);
 // Inicializa la vista al cargar (router si hay vistas) y render directo si se especifica sección
 document.addEventListener('DOMContentLoaded', async () => {
-  try { await dbReady; if (db) { await resetVotesAllDocs(); } } catch {}
   route();
   if (!window.votingOverride) window.votingOverride = 'open';
   const lockEl = document.getElementById('voteLock');
@@ -165,7 +164,7 @@ function getCid(card, fallbackId) {
 
 async function incVoteRemote(cid, delta) {
   try {
-    const USE_REMOTE_VOTES = false;
+    const USE_REMOTE_VOTES = true;
     if (!USE_REMOTE_VOTES) return;
     if (!db || typeof firebase === 'undefined') return;
     const ref = db.collection('votes').doc(cid);
@@ -1658,4 +1657,4 @@ async function renderResults(sectionId) {
   }
 }
 const DRIVE_ONLY = true;
-const USE_REALTIME = false;
+const USE_REALTIME = true;
