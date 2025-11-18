@@ -170,6 +170,43 @@ async function incVoteRemote(cid, delta) {
   } catch {}
 }
 
+async function listCoverIdsForSection(sectionId) {
+  try {
+    const items = await loadImageItems(sectionId);
+    const ids = [];
+    for (const it of items) {
+      const driveId = String(it.driveId || extractDriveId(it.driveUrl || '') || '').trim();
+      const coverId = `img_${driveId || getTitleFromPath(String(it.file||'')).toLowerCase().replace(/\s+/g, '_')}`;
+      ids.push(coverId);
+    }
+    return Array.from(new Set(ids));
+  } catch { return []; }
+}
+
+async function resetVotesSection(sectionId) {
+  const ids = await listCoverIdsForSection(sectionId);
+  for (const id of ids) {
+    try {
+      if (db) { await db.collection('votes').doc(id).set({ count: 0 }, { merge: true }); }
+    } catch {}
+    lsRemove(`votes_local_${id}`);
+    lsRemove(`voted_${id}`);
+  }
+}
+
+window.resetAllVotes = async function resetAllVotes() {
+  try {
+    const sections = ['portada','seccion1','seccion2','seccion3','seccion4','seccion5'];
+    for (const s of sections) { await resetVotesSection(s); }
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (/^(votes_local_|voted_)/.test(String(k||''))) { try { localStorage.removeItem(k); } catch {} }
+      }
+    } catch {}
+  } catch {}
+};
+
 function refreshCardVotes(card) {
   if (!card) return;
   const votesEl = card.querySelector('[data-role="votes"]');
