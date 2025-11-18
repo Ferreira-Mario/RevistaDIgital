@@ -116,6 +116,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const resultsGrid = document.getElementById('resultsGrid');
   const resultsSection = (document.body && document.body.dataset) ? document.body.dataset.section : '';
   if (resultsGrid && resultsSection) renderResults(resultsSection);
+  if (resultsGrid && resultsSection && window.autoRefreshResultsMs && !window._resultsRefreshTimer) {
+    const ms = Number(window.autoRefreshResultsMs) || 5000;
+    window._resultsRefreshTimer = setInterval(() => renderResults(resultsSection), ms);
+  }
   const siteLogo = document.getElementById('siteLogo');
   const logoId = (window && window.siteLogoDriveId) ? window.siteLogoDriveId : '';
   const onGithub = String(window.location.hostname || '').endsWith('.github.io');
@@ -1395,6 +1399,9 @@ function getNextVotingTime() {
 }
 
 function isVotingOpen(sectionId) {
+  const override = (window && window.votingOverride) ? String(window.votingOverride).toLowerCase() : '';
+  if (override === 'open') return true;
+  if (override === 'close') return false;
   const target = getNextVotingTime();
   return new Date() >= target;
 }
@@ -1519,4 +1526,4 @@ async function renderResults(sectionId) {
   });
 }
 const DRIVE_ONLY = true;
-const USE_REALTIME = false;
+const USE_REALTIME = true;
