@@ -633,11 +633,20 @@ async function renderSection(sectionId) {
       Archivo: (currentImageSrc || cover.imagePath || '—')
     }));
 
+      viewBtn.dataset.bound = 'true';
+      infoBtn.dataset.bound = 'true';
       viewBtn.addEventListener('click', async () => {
-        let fullUrl = currentImageSrc;
-        if (!fullUrl) fullUrl = await resolveThumbnailUrl(cover);
-        if (!fullUrl) { alert('No se pudo abrir la imagen.'); return; }
-        openImageViewer(fullUrl, titleDetected);
+        const cards = Array.from(coversGrid.querySelectorAll('article'));
+        const items = await Promise.all(cards.map(async (c) => {
+          const dId = c.dataset.driveId || '';
+          let u = c.dataset.imageUrl || (dId ? resolveDriveUrl(dId) : '');
+          if (!u) u = await resolveImageFromDirs(c.dataset.file || '', c.dataset.author || '', c.dataset.title || '');
+          const cid = dId ? `img_${dId}` : (c.dataset.coverId || '');
+          return { url: u, title: c.dataset.title || '', coverId: cid, author: c.dataset.author || '' };
+        }));
+        const idx = cards.indexOf(card);
+        if (idx < 0) { alert('No se pudo abrir la imagen.'); return; }
+        openImageCarousel(items, idx);
       });
 
       // NUEVO SISTEMA DE VOTACIÓN SIMPLE
@@ -1049,6 +1058,15 @@ function getTitleFromPath(path) {
 
   let imgScale = 1;
   let isViewing = false;
+  const prevBtn = document.getElementById('prevImageBtn');
+  const nextBtn = document.getElementById('nextImageBtn');
+  const voteViewerBtn = document.getElementById('voteCurrentBtn');
+  const prevOverlay = document.getElementById('viewerPrevOverlay');
+  const nextOverlay = document.getElementById('viewerNextOverlay');
+  const viewerControls = document.getElementById('viewerControls');
+  const viewerContainer = viewerImage ? viewerImage.parentElement : null;
+  let viewerItems = [];
+  let viewerIndex = -1;
 
   function applyImageScale() { viewerImage.style.transform = `scale(${imgScale})`; }
 
@@ -1060,6 +1078,8 @@ function getTitleFromPath(path) {
       viewerImage.src = '';
       imgScale = 1;
       applyImageScale();
+      viewerItems = [];
+      viewerIndex = -1;
   }
 
   zoomIn.addEventListener('click', () => { imgScale = Math.min(imgScale + 0.25, 4); applyImageScale(); });
@@ -1069,23 +1089,117 @@ function getTitleFromPath(path) {
   viewerModal.addEventListener('click', (e) => { if (e.target === viewerModal) closeViewer(); });
   window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeViewer(); });
 
-  window.openImageViewer = async function openImageViewer(url, titleHint) {
+  window.openImageViewer = async function openImageViewer(url, titleHint, coverId) {
     try {
       // Usa codificación segura sin doble-encode
       const encoded = resolveImageUrl(url);
       viewerImage.referrerPolicy = 'no-referrer';
       viewerImage.src = encoded;
-      viewerTitle.textContent = titleHint || getTitleFromPath(encoded);
+      let authorName = '';
+      if (coverId) {
+        const grid = document.getElementById('coversGrid');
+        if (grid) {
+          const cards = Array.from(grid.querySelectorAll('article'));
+          const target = cards.find((c) => getCid(c, c.dataset.coverId || '') === coverId);
+          if (target) authorName = target.dataset.author || '';
+        }
+      }
+      const baseTitle = titleHint || getTitleFromPath(encoded);
+      viewerTitle.textContent = authorName ? `${baseTitle} — ${authorName}` : baseTitle;
       imgScale = 1;
       viewerModal.classList.remove('hidden');
       viewerImage.onerror = () => {
         alert(`No se pudo abrir la imagen. Verifica la ruta y el nombre exacto:\n${encoded}`);
         viewerModal.classList.add('hidden');
       };
+      viewerItems = coverId ? [{ url: encoded, title: titleHint || '', coverId, author: authorName }] : [];
+      viewerIndex = viewerItems.length ? 0 : -1;
+      if (voteViewerBtn && coverId) {
+        const voted = lsGet(`voted_${coverId}`, 'false') === 'true';
+        voteViewerBtn.textContent = voted ? 'Quitar voto' : 'Votar';
+      }
     } catch (e) {
       alert('No se pudo abrir la imagen.');
     }
   };
+
+
+  async function setViewerFromItem(idx) {
+    if (!viewerItems.length) return;
+    viewerIndex = Math.max(0, Math.min(idx, viewerItems.length - 1));
+    const item = viewerItems[viewerIndex];
+    const url = resolveImageUrl(item.url || '');
+    viewerImage.referrerPolicy = 'no-referrer';
+    viewerImage.src = url;
+    {
+      const t = item.title || getTitleFromPath(url);
+      const a = item.author || '';
+      viewerTitle.textContent = a ? `${t} — ${a}` : t;
+    }
+    imgScale = 1;
+    if (prevBtn) prevBtn.disabled = viewerIndex <= 0;
+    if (nextBtn) nextBtn.disabled = viewerIndex >= viewerItems.length - 1;
+    if (voteViewerBtn) {
+      const voted = lsGet(`voted_${item.coverId}`, 'false') === 'true';
+      voteViewerBtn.textContent = voted ? 'Quitar voto' : 'Votar';
+    }
+  }
+
+  window.openImageCarousel = async function(items, startIndex) {
+    try {
+      viewerItems = Array.isArray(items) ? items.filter(it => it && it.coverId) : [];
+      viewerIndex = typeof startIndex === 'number' ? startIndex : 0;
+      viewerModal.classList.remove('hidden');
+      await setViewerFromItem(viewerIndex);
+    } catch { alert('No se pudo abrir la imagen.'); }
+  };
+
+  if (prevBtn) prevBtn.addEventListener('click', async () => { await setViewerFromItem(viewerIndex - 1); });
+  if (nextBtn) nextBtn.addEventListener('click', async () => { await setViewerFromItem(viewerIndex + 1); });
+  if (prevOverlay) prevOverlay.addEventListener('click', async () => { await setViewerFromItem(viewerIndex - 1); });
+  if (nextOverlay) nextOverlay.addEventListener('click', async () => { await setViewerFromItem(viewerIndex + 1); });
+  let touchStartX = 0; let touchStartY = 0;
+  viewerImage.addEventListener('touchstart', (e) => { const t=e.touches[0]; touchStartX=t.clientX; touchStartY=t.clientY; }, {passive:true});
+  viewerImage.addEventListener('touchend', async (e) => {
+    const t=e.changedTouches[0]; const dx=t.clientX - touchStartX; const dy=t.clientY - touchStartY;
+    if (Math.abs(dx) > 50 && Math.abs(dy) < 80) { if (dx < 0) await setViewerFromItem(viewerIndex + 1); else await setViewerFromItem(viewerIndex - 1); }
+    positionOverlays();
+  }, {passive:true});
+  
+  if (voteViewerBtn) voteViewerBtn.addEventListener('click', async () => {
+    try {
+      const item = viewerItems[viewerIndex];
+      if (!item || !item.coverId) return;
+      const cid = item.coverId;
+      const was = lsGet(`voted_${cid}`, 'false') === 'true';
+      const current = Number(lsGet(`votes_local_${cid}`, '0'));
+      if (was) {
+        const next = Math.max(0, current - 1);
+        lsSet(`votes_local_${cid}`, String(next));
+        lsRemove(`voted_${cid}`);
+        voteViewerBtn.textContent = 'Votar';
+        incVoteRemote(cid, -1);
+      } else {
+        const next = current + 1;
+        lsSet(`votes_local_${cid}`, String(next));
+        lsSet(`voted_${cid}`, 'true');
+        voteViewerBtn.textContent = 'Quitar voto';
+        incVoteRemote(cid, +1);
+      }
+      const grid = document.getElementById('coversGrid');
+      if (grid) {
+        const cards = Array.from(grid.querySelectorAll('article'));
+        const target = cards.find((c) => {
+          const cId = getCid(c, c.dataset.coverId || '');
+          return cId === cid;
+        });
+        if (target) refreshCardVotes(target);
+      }
+      const sectionAttr = (document.body && document.body.dataset) ? document.body.dataset.section : '';
+      const resultsGrid = document.getElementById('resultsGrid');
+      if (resultsGrid && sectionAttr) { try { await renderResults(sectionAttr); } catch {} }
+    } catch {}
+  });
 })();
 
 // NUEVO: listeners para votos y prevención de doble voto por usuario
@@ -1501,7 +1615,9 @@ async function fetchFirstJSON(urls) {
   const file = card.dataset.file || '';
   const author = card.dataset.author || '';
   const title = card.dataset.title || '';
-  const coverId = card.dataset.coverId || '';
+  const coverId = getCid(card, card.dataset.coverId || '');
+  const currentSection = (document.body && document.body.dataset) ? (document.body.dataset.section || '') : '';
+  if (currentSection && currentSection !== 'portada') return;
   const votesEl = card.querySelector('[data-role="votes"]');
 
   if (action === 'info') {
@@ -1515,17 +1631,18 @@ async function fetchFirstJSON(urls) {
   }
 
   if (action === 'view') {
-    let fullUrl = card.dataset.imageUrl;
-    if (!fullUrl) {
-      const dId = card.dataset.driveId || '';
-      if (dId) {
-        const dUrl = resolveDriveUrl(dId);
-        if (dUrl && await probeImage(dUrl)) fullUrl = dUrl;
-      }
-      if (!fullUrl) fullUrl = await resolveImageFromDirs(file, author, title);
-    }
-    if (!fullUrl) { alert('No se pudo abrir la imagen.'); return; }
-    openImageViewer(fullUrl, title);
+    const grid = document.getElementById('coversGrid');
+    const cards = Array.from(grid ? grid.querySelectorAll('article') : []);
+    const items = await Promise.all(cards.map(async (c) => {
+      const dId = c.dataset.driveId || '';
+      let u = c.dataset.imageUrl || (dId ? resolveDriveUrl(dId) : '');
+      if (!u) u = await resolveImageFromDirs(c.dataset.file || '', c.dataset.author || '', c.dataset.title || '');
+      const cid = getCid(c, c.dataset.coverId || '');
+      return { url: u, title: c.dataset.title || '', coverId: cid, author: c.dataset.author || '' };
+    }));
+    const idx = cards.indexOf(card);
+    if (idx < 0) { alert('No se pudo abrir la imagen.'); return; }
+    openImageCarousel(items, idx);
     return;
   }
 
@@ -1702,13 +1819,12 @@ async function renderResults(sectionId) {
       const file = btn.getAttribute('data-file') || '';
       const author = btn.getAttribute('data-author') || '';
       const dId = btn.getAttribute('data-drive-id') || '';
-      const dUrlAttr = btn.getAttribute('data-image-url') || '';
-      let url = dUrlAttr || (dId ? resolveDriveUrl(dId) : '');
-      if (!url) url = await resolveImageFromDirs(file, author, getTitleFromPath(file));
-      if (!url) { alert('No se pudo abrir la imagen.'); return; }
       const currentSection = (document.body && document.body.dataset) ? (document.body.dataset.section || sectionId) : sectionId;
       const titleLabel = `${sectionNames[currentSection] || currentSection} (boceto)`;
-      openImageViewer(url, titleLabel);
+      const itemsForViewer = entries.map((e) => ({ url: (e.driveId ? resolveDriveUrl(e.driveId) : ''), title: titleLabel, coverId: e.coverId, author: e.author }));
+      const idx = entries.findIndex((e) => (e.driveId === dId) || (e.author === author) || (e.file === file));
+      if (idx < 0) { alert('No se pudo abrir la imagen.'); return; }
+      openImageCarousel(itemsForViewer, idx);
     });
     resultsGrid.dataset.viewBound = 'true';
   }

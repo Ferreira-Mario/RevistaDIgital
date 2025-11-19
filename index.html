@@ -73,6 +73,10 @@
           Resultados Votación
         </a>
 
+        <a href="admin.html" class="w-full block text-left px-4 py-3 hover:bg-indigo-50 rounded-lg font-medium text-lg">
+          Admin
+        </a>
+
         <!-- Acerca -->
         <a href="about.html" class="w-full block text-left px-4 py-3 hover:bg-indigo-50 rounded-lg font-medium text-lg">
           Acerca de nosotros
@@ -144,13 +148,18 @@
           <div class="flex items-center justify-between p-3 border-b">
             <span id="viewerTitle" class="font-medium text-lg">Imagen</span>
             <div class="flex gap-2">
-              <button id="zoomInBtn" class="px-4 py-2 rounded hover:bg-gray-100 text-base">Zoom +</button>
-              <button id="zoomOutBtn" class="px-4 py-2 rounded hover:bg-gray-100 text-base">Zoom −</button>
               <button id="closeViewerBtn" class="px-4 py-2 rounded hover:bg-gray-100 text-base">Cerrar</button>
             </div>
           </div>
-          <div class="flex-1 overflow-auto p-3">
+          <div class="flex-1 overflow-auto p-3 relative">
             <img id="viewerImage" class="mx-auto max-w-full h-auto max-h-[80vh] object-contain select-none transition-transform duration-200 ease-out" alt="Vista" />
+            <button id="viewerPrevOverlay" class="absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-black/40 text-white rounded-full p-4" aria-label="Anterior">←</button>
+            <button id="viewerNextOverlay" class="absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-black/40 text-white rounded-full p-4" aria-label="Siguiente">→</button>
+            <div id="viewerControls" class="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 bg-black/30 backdrop-blur rounded-full px-3 py-2 flex items-center gap-2">
+              <button id="zoomInBtn" class="px-3 py-1 rounded bg-white/80 text-black text-sm">Zoom +</button>
+              <button id="zoomOutBtn" class="px-3 py-1 rounded bg-white/80 text-black text-sm">Zoom −</button>
+              <button id="voteCurrentBtn" class="px-3 py-1 rounded bg-white/80 text-black text-sm">Votar</button>
+            </div>
           </div>
         </div>
       </div>
