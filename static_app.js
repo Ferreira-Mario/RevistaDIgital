@@ -662,6 +662,21 @@ async function renderSection(sectionId) {
           lsSet(`votes_local_${cid}`, voteCount.toString());
           votesEl.textContent = voteCount;
         });
+        if (USE_REALTIME) {
+          const subscribe = () => {
+            const ref = db.collection('votes').doc(cid);
+            const unsub = ref.onSnapshot((snap) => {
+              const data = snap.exists ? snap.data() : null;
+              const remote = Number((data && data.count) || 0);
+              const localVal = Number(lsGet(`votes_local_${cid}`, '0'));
+              const merged = Math.max(localVal, remote);
+              votesEl.textContent = String(merged);
+              lsSet(`votes_local_${cid}`, String(merged));
+            }, (err) => console.warn('onSnapshot error:', err));
+            voteUnsubs.set(cid, unsub);
+          };
+          if (db) subscribe(); else dbReady.then(() => subscribe());
+        }
       }
 
     // Listener de votar centralizado arriba (voteBtn2)
