@@ -170,6 +170,11 @@ async function incVoteRemote(cid, delta) {
     if (!USE_REMOTE_VOTES) return;
     if (!db || typeof firebase === 'undefined') return;
     const ref = db.collection('votes').doc(cid);
+    if (delta < 0) {
+      const snap = await ref.get();
+      const current = Number((snap.exists && snap.data().count) || 0);
+      if (current <= 0) return;
+    }
     await ref.set({ count: firebase.firestore.FieldValue.increment(delta) }, { merge: true });
   } catch {}
 }
@@ -1453,6 +1458,24 @@ async function loadImageItems(sectionId) {
     if (!prev || (hasDrive(it) && !hasDrive(prev))) byFile.set(key, it);
   }
   return Array.from(byFile.values());
+}
+
+async function findDriveFileIdByNameInSection(sectionId, filename) {
+  try {
+    const items = await loadImageItems(sectionId);
+    const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\.[^/.]+$/,'').replace(/\s+/g,' ').trim().toLowerCase();
+    const target = norm(filename);
+    for (const it of items) {
+      const byFile = norm(it.file || '');
+      const byTitle = norm(it.title || '');
+      const byAuthor = norm(it.author || '');
+      if (target && (target === byFile || target === byTitle || target === byAuthor)) {
+        const id = String(it.driveId || extractDriveId(it.driveUrl || '') || '').trim();
+        if (id) return id;
+      }
+    }
+    return '';
+  } catch { return ''; }
 }
 
 async function fetchFirstJSON(urls) {
