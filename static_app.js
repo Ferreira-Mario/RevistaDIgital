@@ -518,8 +518,9 @@ async function renderSection(sectionId) {
                 const data = snap.exists ? snap.data() : null;
                 const remote = Number((data && data.count) || 0);
                 const localVal = Number(lsGet(`votes_local_${cid}`, '0'));
-                votesEl.textContent = String(remote);
-                lsSet(`votes_local_${cid}`, String(remote));
+                const merged = Math.max(localVal, remote);
+                votesEl.textContent = String(merged);
+                lsSet(`votes_local_${cid}`, String(merged));
             }, (err) => console.warn('onSnapshot error:', err));
             voteUnsubs.set(cid, unsub);
           };
@@ -691,8 +692,9 @@ async function renderSection(sectionId) {
               const data = snap.exists ? snap.data() : null;
               const remote = Number((data && data.count) || 0);
               const localVal = Number(lsGet(`votes_local_${cid}`, '0'));
-              votesEl.textContent = String(remote);
-              lsSet(`votes_local_${cid}`, String(remote));
+              const merged = Math.max(localVal, remote);
+              votesEl.textContent = String(merged);
+              lsSet(`votes_local_${cid}`, String(merged));
             }, (err) => console.warn('onSnapshot error:', err));
             voteUnsubs.set(cid, unsub);
           };
@@ -1648,8 +1650,9 @@ async function renderResults(sectionId) {
       await Promise.all(entries.map(async (e) => {
         const snap = await db.collection('votes').doc(e.coverId).get();
         const remote = Number((snap.exists && snap.data().count) || 0);
-        e.votes = remote;
-        lsSet(`votes_local_${e.coverId}`, String(remote));
+        const merged = Math.max(e.votes, remote);
+        e.votes = merged;
+        lsSet(`votes_local_${e.coverId}`, String(merged));
       }));
     } catch {}
   }
@@ -1718,8 +1721,9 @@ async function renderResults(sectionId) {
       const unsub = ref.onSnapshot((snap) => {
         const data = snap.exists ? snap.data() : null;
         const remote = Number((data && data.count) || 0);
-        e.votes = remote;
-        lsSet(`votes_local_${id}`, String(remote));
+        const merged = Math.max(localVal, remote);
+        e.votes = merged;
+        lsSet(`votes_local_${id}`, String(merged));
         draw();
       }, (err) => console.warn('onSnapshot resultados error:', err));
       window._resultsUnsubs.set(id, unsub);
