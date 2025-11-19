@@ -494,9 +494,18 @@ async function renderSection(sectionId) {
           lsSet(`votes_local_${cid}`, voteCount.toString());
           votesEl.textContent = voteCount;
         });
+        if (db && USE_REALTIME) {
+          try {
+            const snapNow = await db.collection('votes').doc(cid).get();
+            const remoteNow = Number((snapNow.exists && snapNow.data().count) || 0);
+            const mergedNow = Math.max(voteCount, remoteNow);
+            votesEl.textContent = String(mergedNow);
+            lsSet(`votes_local_${cid}`, String(mergedNow));
+          } catch {}
+        }
       }
 
-      if (USE_REALTIME) {
+        if (USE_REALTIME) {
           const cid = String(card.dataset.driveId ? `img_${card.dataset.driveId}` : (card.dataset.coverId || coverId || '')).trim();
           const subscribe = () => {
             const ref = db.collection('votes').doc(cid);
@@ -511,7 +520,7 @@ async function renderSection(sectionId) {
             voteUnsubs.set(cid, unsub);
           };
           if (db) subscribe(); else dbReady.then(() => subscribe());
-      }
+        }
   });
 
   return;
@@ -662,6 +671,15 @@ async function renderSection(sectionId) {
           lsSet(`votes_local_${cid}`, voteCount.toString());
           votesEl.textContent = voteCount;
         });
+        if (db && USE_REALTIME) {
+          try {
+            const snapNow2 = await db.collection('votes').doc(cid).get();
+            const remoteNow2 = Number((snapNow2.exists && snapNow2.data().count) || 0);
+            const mergedNow2 = Math.max(voteCount, remoteNow2);
+            votesEl.textContent = String(mergedNow2);
+            lsSet(`votes_local_${cid}`, String(mergedNow2));
+          } catch {}
+        }
         if (USE_REALTIME) {
           const subscribe = () => {
             const ref = db.collection('votes').doc(cid);
@@ -1603,6 +1621,18 @@ async function renderResults(sectionId) {
     const localCount = Number(lsGet(`votes_local_${coverId}`, '0'));
     return { file, author: authorName, coverId, votes: localCount, driveId };
   });
+
+  if (USE_REALTIME && db) {
+    try {
+      await Promise.all(entries.map(async (e) => {
+        const snap = await db.collection('votes').doc(e.coverId).get();
+        const remote = Number((snap.exists && snap.data().count) || 0);
+        const merged = Math.max(e.votes, remote);
+        e.votes = merged;
+        lsSet(`votes_local_${e.coverId}`, String(merged));
+      }));
+    } catch {}
+  }
 
   function draw() {
     const sorted = [...entries].sort((a,b) => b.votes - a.votes).slice(0,3);
