@@ -352,8 +352,8 @@ async function renderSection(sectionId) {
   if (sectionTitleEl) sectionTitleEl.textContent = sectionNames[sectionId] || 'Bocetos';
   coversGrid.innerHTML = '';
 
-  // NUEVO: Portada y Sección 1 por imágenes del índice
-  if (sectionId === 'portada' || sectionId === 'seccion1') {
+  // Render basado en índice de Drive para todas las secciones
+  if (sectionId === 'portada' || (String(sectionId||'').startsWith('seccion'))) {
     const items = await loadImageItems(sectionId);
     if (!items.length) {
       coversGrid.innerHTML = `<div class="text-center py-10 text-gray-500 col-span-full">No hay imágenes. Verifica el feed de Drive o la subcarpeta correspondiente en Google Drive.</div>`;
