@@ -26,10 +26,86 @@ if (sideMenu) {
   // Cierra el menú cuando se hace clic en cualquier enlace con hash
   sideMenu.addEventListener('click', (e) => {
     const link = e.target.closest('a[href]');
-    if (link) closeMenu();
+    if (link) {
+      const href = String(link.getAttribute('href') || '').trim();
+      if (href.indexOf('admin.html') !== -1) {
+        e.preventDefault();
+        openAdminPrompt().then((ok)=>{ if (ok) { closeMenu(); window.location.href = 'admin.html'; } });
+        return;
+      }
+      closeMenu();
+    }
   });
 }
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+
+let _adminPrompt = null;
+function ensureAdminPrompt() {
+  if (_adminPrompt) return _adminPrompt;
+  const overlay = document.createElement('div');
+  overlay.id = 'adminPromptOverlay';
+  overlay.className = 'fixed inset-0 z-[10000] hidden bg-black/50';
+  const box = document.createElement('div');
+  box.className = 'absolute inset-0 flex items-center justify-center p-5';
+  const card = document.createElement('div');
+  card.className = 'bg-white max-w-sm w-full rounded-2xl shadow-xl p-6';
+  const title = document.createElement('h3');
+  title.className = 'text-xl font-bold mb-3';
+  title.textContent = 'Acceso Admin';
+  const input = document.createElement('input');
+  input.id = 'adminPromptInput';
+  input.type = 'password';
+  input.placeholder = 'Contraseña';
+  input.autocomplete = 'off';
+  input.className = 'w-full border rounded px-3 py-2 mb-3';
+  const actions = document.createElement('div');
+  actions.className = 'flex gap-2 justify-end';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.id = 'adminPromptCancel';
+  cancelBtn.className = 'px-4 py-2 rounded bg-gray-100 hover:bg-gray-200';
+  cancelBtn.textContent = 'Cancelar';
+  const okBtn = document.createElement('button');
+  okBtn.id = 'adminPromptSubmit';
+  okBtn.className = 'btn-primary px-4 py-2';
+  okBtn.textContent = 'Entrar';
+  const error = document.createElement('div');
+  error.id = 'adminPromptError';
+  error.className = 'text-sm text-red-600 mt-2';
+  actions.appendChild(cancelBtn);
+  actions.appendChild(okBtn);
+  card.appendChild(title);
+  card.appendChild(input);
+  card.appendChild(actions);
+  card.appendChild(error);
+  box.appendChild(card);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  _adminPrompt = overlay;
+  return overlay;
+}
+function openAdminPrompt() {
+  return new Promise((resolve) => {
+    const el = ensureAdminPrompt();
+    const inp = el.querySelector('#adminPromptInput');
+    const ok = el.querySelector('#adminPromptSubmit');
+    const cancel = el.querySelector('#adminPromptCancel');
+    const err = el.querySelector('#adminPromptError');
+    err.textContent = '';
+    inp.value = '';
+    el.classList.remove('hidden');
+    setTimeout(()=>{ try { inp.focus(); } catch {} }, 0);
+    function done(val) { el.classList.add('hidden'); resolve(val); }
+    function submit() {
+      const v = String(inp.value || '');
+      if (v === '1415130*') done(true); else err.textContent = 'Contraseña incorrecta';
+    }
+    ok.onclick = submit;
+    cancel.onclick = () => done(false);
+    el.onclick = (e) => { if (e.target === el) done(false); };
+    inp.onkeydown = (e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') done(false); };
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') done(false); }, { once: true });
+  });
+}
 
 const bocetosToggle = document.getElementById('bocetosToggle');
 const bocetosMenu = document.getElementById('bocetosMenu');
@@ -286,7 +362,7 @@ function refreshCardVotes(card) {
 let db = null;
 let _dbReadyResolve = null;
 const dbReady = new Promise((resolve) => { _dbReadyResolve = resolve; });
-(async function initFirebase() {
+async function initFirebase() {
   if (!window.firebaseConfig || typeof firebase === 'undefined') {
     console.warn('Firebase no está disponible o falta firebase_config.js.');
     return;
@@ -309,7 +385,8 @@ const dbReady = new Promise((resolve) => { _dbReadyResolve = resolve; });
   }
   if (db && typeof _dbReadyResolve === 'function') { try { _dbReadyResolve(); } catch {} }
   try {} catch {}
-})();
+}
+setTimeout(() => { try { initFirebase(); } catch {} }, 0);
 
 // SISTEMA DE VOTACIÓN SIMPLE - Sin Firestore, solo localStorage
 
@@ -510,6 +587,35 @@ async function renderSection(sectionId) {
         }
       }
 
+      const infoBtn2 = card.querySelector('[data-action="info"]');
+      const viewBtn2 = card.querySelector('[data-action="view"]');
+      if (infoBtn2) {
+        infoBtn2.addEventListener('click', () => {
+          showInfo({
+            Título: card.dataset.title || '',
+            Autor: card.dataset.author || '',
+            Sección: sectionNames[sectionId] || sectionId,
+            Archivo: card.dataset.imageUrl || card.dataset.file || '—'
+          });
+        });
+      }
+      if (viewBtn2) {
+        viewBtn2.dataset.bound = 'true';
+        viewBtn2.addEventListener('click', async () => {
+          const cards = Array.from(coversGrid.querySelectorAll('article'));
+          const items = await Promise.all(cards.map(async (c) => {
+            const dId = c.dataset.driveId || '';
+            let u = c.dataset.imageUrl || (dId ? resolveDriveUrl(dId, 'w2000') : '');
+            if (!u) u = await resolveImageFromDirs(c.dataset.file || '', c.dataset.author || '', c.dataset.title || '');
+            const cid = dId ? `img_${dId}` : (c.dataset.coverId || '');
+            return { url: u, title: c.dataset.title || '', coverId: cid, author: c.dataset.author || '' };
+          }));
+          const idx = cards.indexOf(card);
+          if (idx < 0) { alert('No se pudo abrir la imagen.'); return; }
+          openImageCarousel(items, idx);
+        });
+      }
+
         if (USE_REALTIME) {
           const cid = String(card.dataset.driveId ? `img_${card.dataset.driveId}` : (card.dataset.coverId || coverId || '')).trim();
           const subscribe = () => {
@@ -639,7 +745,7 @@ async function renderSection(sectionId) {
         const cards = Array.from(coversGrid.querySelectorAll('article'));
         const items = await Promise.all(cards.map(async (c) => {
           const dId = c.dataset.driveId || '';
-          let u = c.dataset.imageUrl || (dId ? resolveDriveUrl(dId) : '');
+          let u = c.dataset.imageUrl || (dId ? resolveDriveUrl(dId, 'w2000') : '');
           if (!u) u = await resolveImageFromDirs(c.dataset.file || '', c.dataset.author || '', c.dataset.title || '');
           const cid = dId ? `img_${dId}` : (c.dataset.coverId || '');
           return { url: u, title: c.dataset.title || '', coverId: cid, author: c.dataset.author || '' };
@@ -780,10 +886,10 @@ function extractDriveId(input) {
     return '';
   } catch { return ''; }
 }
-function resolveDriveUrl(idOrUrl) {
+function resolveDriveUrl(idOrUrl, size) {
   const id = extractDriveId(idOrUrl);
-  // Usa thumbnail JPEG para evitar ORB/CORB y asegurar Content-Type de imagen
-  return id ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w2000` : '';
+  const sz = String(size || 'w800');
+  return id ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=${encodeURIComponent(sz)}` : '';
 }
 
 async function listDriveFolderFiles(folderId) {
@@ -1779,7 +1885,7 @@ async function renderResults(sectionId) {
     const total = entries.reduce((sum, e) => sum + (Number(e.votes)||0), 0);
     const crowns = ['🥇','🥈','🥉'];
     const cards = sorted.map((e, i) => {
-      const dUrl = e.driveId ? resolveDriveUrl(e.driveId) : '';
+      const dUrl = e.driveId ? resolveDriveUrl(e.driveId, 'w600') : '';
       const sizeClass = i === 0 ? 'sm:col-span-1 sm:order-2' : (i === 1 ? 'sm:order-1' : 'sm:order-3');
       return `
         <div class="bg-white rounded-2xl shadow-lg p-6 sm:p-8 text-center ${sizeClass}">
@@ -1821,7 +1927,7 @@ async function renderResults(sectionId) {
       const dId = btn.getAttribute('data-drive-id') || '';
       const currentSection = (document.body && document.body.dataset) ? (document.body.dataset.section || sectionId) : sectionId;
       const titleLabel = `${sectionNames[currentSection] || currentSection} (boceto)`;
-      const itemsForViewer = entries.map((e) => ({ url: (e.driveId ? resolveDriveUrl(e.driveId) : ''), title: titleLabel, coverId: e.coverId, author: e.author }));
+      const itemsForViewer = entries.map((e) => ({ url: (e.driveId ? resolveDriveUrl(e.driveId, 'w2000') : ''), title: titleLabel, coverId: e.coverId, author: e.author }));
       const idx = entries.findIndex((e) => (e.driveId === dId) || (e.author === author) || (e.file === file));
       if (idx < 0) { alert('No se pudo abrir la imagen.'); return; }
       openImageCarousel(itemsForViewer, idx);
@@ -1847,4 +1953,4 @@ async function renderResults(sectionId) {
   }
 }
 const DRIVE_ONLY = true;
-const USE_REALTIME = true;
+const USE_REALTIME = false;
