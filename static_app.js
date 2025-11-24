@@ -159,11 +159,12 @@ const views = {
   home: document.getElementById('view-home'),
   bocetos: document.getElementById('view-bocetos'),
   about: document.getElementById('view-about'),
+  magazine: document.getElementById('view-magazine'),
 };
 function route() {
-  const hasViews = !!(views.home || views.bocetos || views.about);
+  const hasViews = !!(views.home || views.bocetos || views.about || views.magazine);
   if (!hasViews) return;
-  const hash = window.location.hash || '#/';
+  const hash = window.location.hash || '#/'
   const parts = hash.replace('#/', '').split('/');
   const base = parts[0] || '';
   const sectionId = parts[1] || 'portada';
@@ -171,22 +172,30 @@ function route() {
   if (views.home) views.home.classList.add('hidden');
   if (views.bocetos) views.bocetos.classList.add('hidden');
   if (views.about) views.about.classList.add('hidden');
+  if (views.magazine) views.magazine.classList.add('hidden');
+  const homeCarousel = document.getElementById('home-carousel');
+  if (homeCarousel) homeCarousel.classList.add('hidden');
 
   if (base === '' || base === undefined) {
     if (views.home) views.home.classList.remove('hidden');
+    if (homeCarousel) homeCarousel.classList.remove('hidden');
   } else if (base === 'bocetos') {
     if (views.bocetos) views.bocetos.classList.remove('hidden');
     renderSection(sectionId);
   } else if (base === 'about') {
     if (views.about) views.about.classList.remove('hidden');
+  } else if (base === 'revista' || base === 'magazine') {
+    if (views.magazine) views.magazine.classList.remove('hidden');
+    renderMagazine();
   } else {
     if (views.home) views.home.classList.remove('hidden');
+    if (homeCarousel) homeCarousel.classList.remove('hidden');
   }
 }
-window.addEventListener('hashchange', route);
-// Inicializa la vista al cargar (router si hay vistas) y render directo si se especifica sección
-document.addEventListener('DOMContentLoaded', async () => {
-  route();
+  window.addEventListener('hashchange', route);
+  // Inicializa la vista al cargar (router si hay vistas) y render directo si se especifica sección
+  document.addEventListener('DOMContentLoaded', async () => {
+    route();
   if (!window.votingOverride) window.votingOverride = 'open';
   const lockEl = document.getElementById('voteLock');
   if (lockEl) { try { lockEl.classList.add('hidden'); lockEl.style.display = 'none'; lockEl.remove(); } catch {} }
@@ -205,17 +214,179 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   
 
-  const sectionSelect = document.getElementById('resultsSectionSelect');
-  if (sectionSelect && resultsGrid) {
-    const initial = resultsSection || 'portada';
-    try { sectionSelect.value = initial; } catch {}
-    sectionSelect.addEventListener('change', () => {
-      const val = sectionSelect.value || 'portada';
-      if (document.body && document.body.dataset) document.body.dataset.section = val;
-      renderResults(val);
+    const sectionSelect = document.getElementById('resultsSectionSelect');
+    if (sectionSelect && resultsGrid) {
+      const initial = resultsSection || 'portada';
+      try { sectionSelect.value = initial; } catch {}
+      sectionSelect.addEventListener('change', () => {
+        const val = sectionSelect.value || 'portada';
+        if (document.body && document.body.dataset) document.body.dataset.section = val;
+        renderResults(val);
+      });
+    }
+
+    initHomeCarousel();
+    const hashBase = (window.location.hash || '#/').replace('#/','').split('/')[0] || '';
+    if (hashBase === 'revista' || hashBase === 'magazine') {
+      try { renderMagazine(); } catch {}
+    }
+  });
+
+  function initHomeCarousel() {
+    const titleBtn = document.getElementById('carouselTitleButton');
+    const filters = document.getElementById('carouselFilters');
+    const viewport = document.getElementById('carouselViewport');
+    const track = document.getElementById('carouselTrack');
+    const prev = document.getElementById('carouselPrev');
+    const next = document.getElementById('carouselNext');
+    if (!track || !filters || !viewport || !prev || !next) return;
+    let currentSection = 'portada';
+    let items = [];
+    let idx = 0;
+    let timer = null;
+    let anim = null;
+    let position = 0;
+    const STEP = 214;
+    const SPEED = 50 / 1000; // px por ms (~6.7s por slide)
+    const sectionCache = new Map();
+    const imgUrlCache = new Map();
+    let loadSeq = 0;
+
+    async function getRaw(sectionId) {
+      if (sectionCache.has(sectionId)) return sectionCache.get(sectionId);
+      const raw = await loadImageItems(sectionId);
+      sectionCache.set(sectionId, raw);
+      return raw;
+    }
+
+    async function loadAndRender(sectionId) {
+      currentSection = sectionId;
+      if (titleBtn) titleBtn.textContent = sectionNames[sectionId] || 'Portadas';
+      const seq = ++loadSeq;
+      const raw = await getRaw(sectionId);
+      items = raw.map((it) => {
+        const dId = String(it.driveId || extractDriveId(it.driveUrl || '') || '').trim();
+        const key = dId || (it.file || '') || (it.title || '') || (it.author || '');
+        let u = '';
+        if (dId) u = resolveDriveUrl(dId, 'w1200');
+        else if (imgUrlCache.has(key)) u = imgUrlCache.get(key);
+        const cid = dId ? `img_${dId}` : `img_${getTitleFromPath(String(it.file||'')).toLowerCase().replace(/\s+/g,'_')}`;
+        return { url: u, title: it.title || '', coverId: cid, author: it.author || '' };
+      });
+      idx = 0;
+      position = 0;
+      track.innerHTML = '';
+      track.style.transition = 'none';
+      items.forEach((r, i) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'relative h-[220px] w-[210px] flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden';
+        wrap.dataset.idx = String(i);
+        const el = document.createElement('img');
+        el.className = 'h-full w-full object-contain select-none cursor-pointer transform transition-transform duration-200 ease-out hover:scale-105';
+        el.src = r.url;
+        el.alt = r.title || '';
+        if (!r.url) { el.style.visibility = 'hidden'; }
+        const tag = document.createElement('span');
+        tag.className = 'absolute bottom-1 left-1/2 -translate-x-1/2 text-center text-[12px] px-2 py-[2px] bg-black/60 text-white rounded truncate max-w-[70%] whitespace-nowrap';
+        tag.textContent = (r.author || '').trim();
+        wrap.appendChild(el);
+        wrap.appendChild(tag);
+        track.appendChild(wrap);
+        wrap.addEventListener('click', () => {
+          const j = Number(wrap.dataset.idx || i);
+          if (!Number.isFinite(j)) return;
+          if (items && items.length) openImageCarousel(items, Math.max(0, Math.min(items.length - 1, j)));
+        });
+        if (!r.url) {
+          const it = raw[i];
+          Promise.resolve().then(async () => {
+            const dId = String(it.driveId || extractDriveId(it.driveUrl || '') || '').trim();
+            let u2 = dId ? resolveDriveUrl(dId, 'w1200') : '';
+            if (!u2) u2 = await resolveImageFromDirs(it.file || '', it.author || '', it.title || '');
+            if (seq !== loadSeq) return;
+            if (u2) {
+              const key = dId || (it.file || '') || (it.title || '') || (it.author || '');
+              imgUrlCache.set(key, u2);
+              items[i].url = u2;
+              const slide = track.children[i];
+              const imgEl = slide ? slide.querySelector('img') : null;
+              if (imgEl) { imgEl.src = u2; imgEl.style.visibility = 'visible'; }
+            }
+          });
+        }
+      });
+      updateActiveFilter();
+      startAuto();
+      updateScroll();
+    }
+
+    function updateActiveFilter() {
+      const btns = Array.from(filters.querySelectorAll('[data-section]'));
+      btns.forEach((b) => {
+        const s = b.dataset.section || '';
+        if (s === currentSection) { b.classList.add('btn-primary'); b.classList.remove('btn-outline'); }
+        else { b.classList.add('btn-outline'); b.classList.remove('btn-primary'); }
+      });
+    }
+
+    function startAuto() {
+      stopAuto();
+      let last = performance.now();
+      const loop = (ts) => {
+        const dt = ts - last; last = ts;
+        position += SPEED * dt;
+        if (position >= STEP) {
+          position -= STEP;
+          if (track.firstElementChild) track.appendChild(track.firstElementChild);
+          idx = (idx + 1) % Math.max(items.length, 1);
+        }
+        updateScroll();
+        anim = requestAnimationFrame(loop);
+      };
+      anim = requestAnimationFrame(loop);
+    }
+    function stopAuto() {
+      if (timer) { try { clearInterval(timer); } catch {} } // por compatibilidad
+      timer = null;
+      if (anim) { try { cancelAnimationFrame(anim); } catch {} }
+      anim = null;
+    }
+
+    function updateScroll() {
+      track.style.transform = `translateX(${-position}px)`;
+    }
+
+    filters.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-section]');
+      if (!b) return;
+      const s = b.dataset.section || 'portada';
+      loadAndRender(s);
+    });
+
+    if (titleBtn) titleBtn.addEventListener('click', () => loadAndRender('portada'));
+    prev.addEventListener('click', () => {
+      if (!track.children.length) return;
+      position += STEP;
+      const last = track.lastElementChild;
+      if (last) track.insertBefore(last, track.firstElementChild);
+      updateScroll();
+    });
+    next.addEventListener('click', () => {
+      if (!track.children.length) return;
+      position = Math.max(0, position);
+      position += STEP; // forzar avance inmediato
+      if (position >= STEP) {
+        position -= STEP;
+        if (track.firstElementChild) track.appendChild(track.firstElementChild);
+      }
+      updateScroll();
+    });
+
+    loadAndRender('portada').then(() => {
+      const others = ['seccion1','seccion2','seccion3','seccion4','seccion5'];
+      others.forEach((s) => { getRaw(s); });
     });
   }
-});
 
 function lsGet(key, fallback = null) {
   try {
@@ -1954,3 +2125,43 @@ async function renderResults(sectionId) {
 }
 const DRIVE_ONLY = true;
 const USE_REALTIME = false;
+  async function renderMagazine() {
+    const viewport = document.getElementById('magazineViewport');
+    const pageWrap = document.getElementById('magazinePage');
+    const img = document.getElementById('magazineImage');
+    const prev = document.getElementById('magPrev');
+    const next = document.getElementById('magNext');
+    const status = document.getElementById('magazineStatus');
+    if (!viewport || !pageWrap || !img || !prev || !next) return;
+    const folderId = String(window.magazineFolderId || '').trim();
+    let files = [];
+    if (folderId) {
+      files = await listDriveFolderFiles(folderId);
+    } else {
+      const rootId = window.driveRootFolderId || '';
+      const sub = rootId ? await getDriveSubfolderId(rootId, 'Revista Digital') : '';
+      if (sub) files = await listDriveFolderFiles(sub);
+    }
+    files = Array.isArray(files) ? files : [];
+    const pages = files.map(f => ({ id: f.id, name: f.name, url: resolveDriveUrl(f.id, 'w2000') }));
+    let idx = 0;
+    function update() {
+      const p = pages[idx];
+      if (!p) { img.removeAttribute('src'); if (status) status.textContent = 'Sin páginas'; return; }
+      img.style.transform = 'rotateY(0deg)';
+      img.style.transition = 'transform 400ms ease';
+      img.src = p.url;
+      if (status) status.textContent = `${idx+1} / ${pages.length}`;
+    }
+    function flip(to) {
+      if (!pages.length) return;
+      img.style.transform = 'rotateY(-60deg)';
+      img.style.transition = 'transform 300ms ease';
+      setTimeout(() => { idx = to; update(); }, 180);
+    }
+    prev.onclick = () => { const to = (idx - 1 + pages.length) % pages.length; flip(to); };
+    next.onclick = () => { const to = (idx + 1) % pages.length; flip(to); };
+    pageWrap.style.perspective = '1200px';
+    pageWrap.style.transformStyle = 'preserve-3d';
+    update();
+  }

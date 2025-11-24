@@ -52,6 +52,9 @@
 
         <!-- Inicio -->
         <a href="#/" class="w-full block text-left px-4 py-3 hover:bg-indigo-50 rounded-lg font-medium text-lg">
+          Inicio
+        </a>
+        <a href="#/revista" class="w-full block text-left px-4 py-3 hover:bg-indigo-50 rounded-lg font-medium text-lg">
           Revista Digital
         </a>
 
@@ -95,27 +98,52 @@
     <main class="max-w-6xl mx-auto px-4 py-6">
       <!-- Home -->
       <section id="view-home" class="">
-        <div class="max-w-7xl mx-auto py-10">
-          <div class="max-w-none px-0 py-10">
+        <div class="max-w-7xl mx-auto py-6">
+          <div class="max-w-none px-0 py-4">
             <div class="w-full hero-surface border rounded-2xl shadow-sm p-6 lg:p-14">
               <div class="max-w-5xl mx-auto">
-                <h2 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight mb-4 brand-title">La Huella del Alce</h2>
+               <h2 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight mb-4 brand-title text-center">La Huella del Alce</h2>
                 <p class="text-gray-700 text-base sm:text-lg lg:text-xl mb-6">
-                  Bienvenida/o a nuestra edición digital. Explora propuestas visuales, ábrelas en un visor de alta calidad y conoce el contexto detrás de cada obra.
+                  Bienvenida/o a nuestra edición digital. Un espacio de expresión, creatividad y participación estudiantil.
                 </p>
-                <p class="text-gray-600 text-sm sm:text-base lg:text-lg mb-8">
-                  Visualiza y vota: aprecia cada detalle y registra tu voto de manera sencilla. Con autenticación anónima y Firestore, el conteo puede actualizarse en tiempo real.
+                <p class="text-gray-600 text-sm sm:text-base lg:text-lg mb-8 text-justify">
+                  La Revista Digital del Colegio Intercanadiense es un espacio creado por y para estudiantes. Aquí mezclamos creatividad, expresión y tecnología para contar lo que realmente nos importa: nuestras ideas, proyectos, experiencias y el día a día de nuestra comunidad escolar.
                 </p>
-                <div class="flex flex-wrap gap-3 sm:gap-4">
-                  <a href="bocetos-portada.html" class="px-6 py-3 rounded-lg btn-primary font-semibold">Ver Portadas</a>
-                  <a href="bocetos-seccion1.html" class="px-6 py-3 rounded-lg btn-outline font-semibold">Ver Sección 1</a>
-                  <a href="#/" class="px-6 py-3 rounded-lg btn-danger font-semibold">Explora</a>
-                </div>
+                <p class="text-gray-600 text-sm sm:text-base lg:text-lg mb-8 text-justify">
+A través del ABP, transformamos nuestras habilidades en un proyecto real: una revista moderna, dinámica y llena de contenido que refleja quiénes somos. Ya sea con artículos, entrevistas, reportajes, videos o actividades interactivas, buscamos inspirar, informar y conectar a todos los que formamos parte del colegio.
+                </p>
+                <p class="text-gray-600 text-sm sm:text-base lg:text-lg mb-8 text-justify"> Esta revista no solo comunica: también crea comunidad. Y tú formas parte de ella.
+                </p>
+                <div class="hidden"></div>
               </div>
             </div>
           </div>
         </div>
       </section>
+
+      <section id="home-carousel" class="mt-1">
+        <div class="max-w-7xl mx-auto">
+          <div class="w-full hero-surface border rounded-2xl shadow-sm p-6 lg:p-10">
+            <div class="flex flex-col items-center gap-3 mb-6">
+              <button id="carouselTitleButton" class="brand-title text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-center">Portadas</button>
+              <div id="carouselFilters" class="flex flex-wrap gap-2 justify-center">
+                <button data-section="portada" class="px-5 py-2 rounded-lg btn-primary font-semibold">Portadas</button>
+                <button data-section="seccion1" class="px-5 py-2 rounded-lg btn-outline font-semibold">Sección 1</button>
+                <button data-section="seccion2" class="px-5 py-2 rounded-lg btn-outline font-semibold">Sección 2</button>
+                <button data-section="seccion3" class="px-5 py-2 rounded-lg btn-outline font-semibold">Sección 3</button>
+                <button data-section="seccion4" class="px-5 py-2 rounded-lg btn-outline font-semibold">Sección 4</button>
+                <button data-section="seccion5" class="px-5 py-2 rounded-lg btn-outline font-semibold">Sección 5</button>
+              </div>
+            </div>
+            <div id="carouselViewport" class="relative overflow-hidden">
+              <div id="carouselTrack" class="flex gap-1 transition-transform duration-500 ease-out will-change-transform"></div>
+              <button id="carouselPrev" class="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/40 text-white rounded-full w-10 h-10 flex items-center justify-center" aria-label="Anterior">‹</button>
+              <button id="carouselNext" class="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/40 text-white rounded-full w-10 h-10 flex items-center justify-center" aria-label="Siguiente">›</button>
+            </div>
+          </div>
+        </div>
+      </section>
+      
 
       <!-- Ajusta el texto guía para reflejar ambas fuentes -->
       <div class="text-center py-10">
@@ -142,6 +170,24 @@
           <p class="text-gray-600">
             Para producción con datos en tiempo real y subida de archivos, usa la versión React + Firebase.
           </p>
+        </div>
+      </section>
+
+      <section id="view-magazine" class="hidden">
+        <div class="w-full hero-surface border rounded-2xl shadow-sm p-6 lg:p-10">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-3xl font-bold">Revista Digital</h2>
+            <div class="flex gap-2">
+              <button id="magPrev" class="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200">Anterior</button>
+              <button id="magNext" class="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200">Siguiente</button>
+            </div>
+          </div>
+          <div id="magazineViewport" class="relative w-full h-[70vh] bg-gray-100 rounded-lg overflow-hidden">
+            <div id="magazinePage" class="absolute inset-0 flex items-center justify-center perspective-1000">
+              <img id="magazineImage" alt="Página" class="max-h-full max-w-full object-contain select-none will-change-transform" />
+            </div>
+            <div id="magazineStatus" class="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs bg-black/50 text-white px-2 py-1 rounded"></div>
+          </div>
         </div>
       </section>
     </main>
@@ -187,6 +233,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
     <script src="./firebase_config.js"></script>
     <script>window.siteLogoDriveId='1TOwUQQen3hM78o9Lx3rY2idclhB-poPq'</script>
+    <script>window.magazineFolderId=''</script>
     <script src="./static_app.js"></script>
   </body>
 </html>
