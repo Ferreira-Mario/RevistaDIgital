@@ -516,9 +516,20 @@ function refreshCardVotes(card) {
   const votesEl = card.querySelector('[data-role="votes"]');
   const btn = card.querySelector('[data-action="vote"]');
   const cid = getCid(card, card && card.dataset ? card.dataset.coverId : '');
-  const count = Number(lsGet(`votes_local_${cid}`, '0'));
+  let count = Number(lsGet(`votes_local_${cid}`, '0'));
   const voted = lsGet(`voted_${cid}`, 'false') === 'true';
-  if (votesEl) votesEl.textContent = String(count);
+  if (typeof USE_REALTIME !== 'undefined' && USE_REALTIME && typeof db !== 'undefined' && db) {
+    try {
+      db.collection('votes').doc(cid).get().then((snap)=>{
+        const remote = Number((snap.exists && snap.data().count) || 0);
+        count = remote;
+        if (votesEl) votesEl.textContent = String(count);
+        lsSet(`votes_local_${cid}`, String(count));
+      }).catch(()=>{ if (votesEl) votesEl.textContent = String(count); });
+    } catch { if (votesEl) votesEl.textContent = String(count); }
+  } else {
+    if (votesEl) votesEl.textContent = String(count);
+  }
   if (btn) {
     btn.textContent = voted ? 'Quitar voto' : 'Votar';
     if (voted) {
