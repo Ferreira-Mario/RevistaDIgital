@@ -2114,6 +2114,7 @@ async function renderResults(sectionId) {
       const unsub = ref.onSnapshot((snap) => {
         const data = snap.exists ? snap.data() : null;
         const remote = Number((data && data.count) || 0);
+        const localVal = Number(lsGet(`votes_local_${id}`, '0'));
         const merged = Math.max(localVal, remote);
         e.votes = merged;
         lsSet(`votes_local_${id}`, String(merged));
@@ -2124,7 +2125,7 @@ async function renderResults(sectionId) {
   }
 }
 const DRIVE_ONLY = true;
-const USE_REALTIME = false;
+const USE_REALTIME = true;
   async function renderMagazine() {
     const viewport = document.getElementById('magazineViewport');
     const pageWrap = document.getElementById('magazinePage');
