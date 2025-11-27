@@ -2071,7 +2071,7 @@ async function renderResults(sectionId) {
           <h3 class="text-2xl sm:text-3xl font-bold mt-3">${e.author}</h3>
           <div class="mt-2 text-2xl font-extrabold text-indigo-600">${e.votes} votos</div>
           <div class="mt-4 flex justify-center">
-            <button class="btn-primary text-lg px-6 py-3" data-action="view" data-file="${e.file}" data-author="${e.author}" data-drive-id="${e.driveId || ''}" data-image-url="${dUrl}">Ver</button>
+            <button class="btn-primary text-lg px-6 py-3" data-action="view" data-file="${e.file}" data-author="${e.author}" data-drive-id="${e.driveId || ''}" data-image-url="${dUrl}" data-cover-id="${e.coverId}">Ver</button>
           </div>
         </div>
       `;
@@ -2100,10 +2100,16 @@ async function renderResults(sectionId) {
       const file = btn.getAttribute('data-file') || '';
       const author = btn.getAttribute('data-author') || '';
       const dId = btn.getAttribute('data-drive-id') || '';
+      const cId = btn.getAttribute('data-cover-id') || '';
       const currentSection = (document.body && document.body.dataset) ? (document.body.dataset.section || sectionId) : sectionId;
       const titleLabel = `${sectionNames[currentSection] || currentSection} (boceto)`;
-      const itemsForViewer = entries.map((e) => ({ url: (e.driveId ? resolveDriveUrl(e.driveId, 'w2000') : ''), title: titleLabel, coverId: e.coverId, author: e.author }));
-      const idx = entries.findIndex((e) => (e.driveId === dId) || (e.author === author) || (e.file === file));
+      const itemsForViewer = await Promise.all(entries.map(async (e) => {
+        let u = e.driveId ? resolveDriveUrl(e.driveId, 'w2000') : '';
+        if (!u) u = await resolveImageFromDirs(e.file || '', e.author || '', titleLabel || '');
+        return { url: u, title: titleLabel, coverId: e.coverId, author: e.author };
+      }));
+      let idx = entries.findIndex((e) => e.coverId === cId);
+      if (idx < 0) idx = entries.findIndex((e) => (e.driveId === dId) || (e.author === author) || (e.file === file));
       if (idx < 0) { alert('No se pudo abrir la imagen.'); return; }
       openImageCarousel(itemsForViewer, idx);
     });
