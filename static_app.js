@@ -797,6 +797,32 @@ async function renderSection(sectionId) {
         });
       }
 
+      if (!coversGrid.dataset.openBound) {
+        const openFromArticle = async (art) => {
+          const cards = Array.from(coversGrid.querySelectorAll('article'));
+          const items = await Promise.all(cards.map(async (c) => {
+            const dId = c.dataset.driveId || '';
+            let u = c.dataset.imageUrl || (dId ? resolveDriveUrl(dId, 'w2000') : '');
+            if (!u) u = await resolveImageFromDirs(c.dataset.file || '', c.dataset.author || '', c.dataset.title || '');
+            const cid = dId ? `img_${dId}` : (c.dataset.coverId || '');
+            return { url: u, title: c.dataset.title || '', coverId: cid, author: c.dataset.author || '' };
+          }));
+          const idx = cards.indexOf(art);
+          if (idx < 0) { alert('No se pudo abrir la imagen.'); return; }
+          openImageCarousel(items, idx);
+        };
+        const gridOpenHandler = async (ev) => {
+          const art = ev.target.closest('article');
+          if (!art) return;
+          const isControl = !!ev.target.closest('[data-action="info"],[data-action="view"],[data-action="vote"]');
+          if (isControl) return;
+          await openFromArticle(art);
+        };
+        coversGrid.addEventListener('click', gridOpenHandler, { passive: true });
+        coversGrid.addEventListener('touchend', gridOpenHandler, { passive: true });
+        coversGrid.dataset.openBound = 'true';
+      }
+
         if (USE_REALTIME) {
           const cid = String(card.dataset.driveId ? `img_${card.dataset.driveId}` : (card.dataset.coverId || coverId || '')).trim();
           const subscribe = () => {
@@ -933,6 +959,32 @@ async function renderSection(sectionId) {
         if (idx < 0) { alert('No se pudo abrir la imagen.'); return; }
         openImageCarousel(items, idx);
       });
+
+      if (!coversGrid.dataset.openBound) {
+        const openFromArticle2 = async (art) => {
+          const cards = Array.from(coversGrid.querySelectorAll('article'));
+          const items = await Promise.all(cards.map(async (c) => {
+            const dId = c.dataset.driveId || '';
+            let u = c.dataset.imageUrl || (dId ? resolveDriveUrl(dId, 'w2000') : '');
+            if (!u) u = await resolveImageFromDirs(c.dataset.file || '', c.dataset.author || '', c.dataset.title || '');
+            const cid = dId ? `img_${dId}` : (c.dataset.coverId || '');
+            return { url: u, title: c.dataset.title || '', coverId: cid, author: c.dataset.author || '' };
+          }));
+          const idx = cards.indexOf(art);
+          if (idx < 0) { alert('No se pudo abrir la imagen.'); return; }
+          openImageCarousel(items, idx);
+        };
+        const gridOpenHandler2 = async (ev) => {
+          const art = ev.target.closest('article');
+          if (!art) return;
+          const isControl = !!ev.target.closest('[data-action="info"],[data-action="view"],[data-action="vote"]');
+          if (isControl) return;
+          await openFromArticle2(art);
+        };
+        coversGrid.addEventListener('click', gridOpenHandler2, { passive: true });
+        coversGrid.addEventListener('touchend', gridOpenHandler2, { passive: true });
+        coversGrid.dataset.openBound = 'true';
+      }
 
       // NUEVO SISTEMA DE VOTACIÓN SIMPLE
       const voteBtn2 = card.querySelector('[data-action="vote"]');
