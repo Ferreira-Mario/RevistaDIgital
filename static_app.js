@@ -2119,10 +2119,10 @@ async function renderResults(sectionId) {
       const dUrl = e.driveId ? resolveDriveUrl(e.driveId, 'w600') : '';
       const sizeClass = i === 0 ? 'sm:col-span-1 sm:order-2' : (i === 1 ? 'sm:order-1' : 'sm:order-3');
       return `
-        <div class="bg-white rounded-2xl shadow-lg p-6 sm:p-8 text-center ${sizeClass}">
+        <div class="bg-white rounded-2xl shadow-lg p-6 sm:p-8 text-center ${sizeClass}" data-result-card="true" data-cover-id="${e.coverId}" data-drive-id="${e.driveId || ''}" data-file="${e.file}" data-image-url="${dUrl}">
           <div class="text-5xl">${crowns[i]}</div>
           <div class="mt-3 w-full overflow-hidden rounded-xl bg-gray-100">
-            ${dUrl ? `<img src="${dUrl}" alt="${e.author}" loading="lazy" class="w-full h-56 object-cover">` : ''}
+            ${dUrl ? `<img src="${dUrl}" alt="${e.author}" loading="lazy" class="w-full h-56 object-cover" data-role="result-thumb">` : ''}
           </div>
           <h3 class="text-2xl sm:text-3xl font-bold mt-3">${e.author}</h3>
           <div class="mt-2 text-2xl font-extrabold text-indigo-600">${e.votes} votos</div>
@@ -2172,6 +2172,35 @@ async function renderResults(sectionId) {
       if (idx < 0) { alert('No se pudo abrir la imagen.'); return; }
       openImageCarousel(itemsForViewer, idx);
     });
+    const openFromCard = async (cardEl) => {
+      const file = cardEl.getAttribute('data-file') || '';
+      const author = cardEl.getAttribute('data-author') || '';
+      const dId = cardEl.getAttribute('data-drive-id') || '';
+      const cId = cardEl.getAttribute('data-cover-id') || '';
+      const imgUrlAttr = cardEl.getAttribute('data-image-url') || '';
+      const currentSection = (document.body && document.body.dataset) ? (document.body.dataset.section || sectionId) : sectionId;
+      const titleLabel = `${sectionNames[currentSection] || currentSection} (boceto)`;
+      const visible = [...entries].sort((a,b) => b.votes - a.votes).slice(0,3);
+      const itemsForViewer = await Promise.all(visible.map(async (e) => {
+        let u = e.driveId ? resolveDriveUrl(e.driveId, 'w2000') : '';
+        if (!u) u = await resolveImageFromDirs(e.file || '', e.author || '', titleLabel || '');
+        if (!u && e.coverId === cId && imgUrlAttr) u = imgUrlAttr;
+        return { url: u, title: titleLabel, coverId: e.coverId, author: e.author };
+      }));
+      let idx = visible.findIndex((e) => e.coverId === cId);
+      if (idx < 0) idx = visible.findIndex((e) => (e.driveId === dId) || (e.author === author) || (e.file === file));
+      if (idx < 0) { alert('No se pudo abrir la imagen.'); return; }
+      openImageCarousel(itemsForViewer, idx);
+    };
+    const gridOpen = async (ev) => {
+      const cardEl = ev.target.closest('[data-result-card]');
+      if (!cardEl) return;
+      const isButton = !!ev.target.closest('[data-action="view"]');
+      if (isButton) return;
+      await openFromCard(cardEl);
+    };
+    resultsGrid.addEventListener('click', gridOpen, { passive: true });
+    resultsGrid.addEventListener('touchend', gridOpen, { passive: true });
     resultsGrid.dataset.viewBound = 'true';
   }
 
