@@ -2160,14 +2160,15 @@ async function renderResults(sectionId) {
       const imgUrlAttr = btn.getAttribute('data-image-url') || '';
       const currentSection = (document.body && document.body.dataset) ? (document.body.dataset.section || sectionId) : sectionId;
       const titleLabel = `${sectionNames[currentSection] || currentSection} (boceto)`;
-      const itemsForViewer = await Promise.all(entries.map(async (e) => {
+      const visible = [...entries].sort((a,b) => b.votes - a.votes).slice(0,3);
+      const itemsForViewer = await Promise.all(visible.map(async (e) => {
         let u = e.driveId ? resolveDriveUrl(e.driveId, 'w2000') : '';
         if (!u) u = await resolveImageFromDirs(e.file || '', e.author || '', titleLabel || '');
         if (!u && e.coverId === cId && imgUrlAttr) u = imgUrlAttr;
         return { url: u, title: titleLabel, coverId: e.coverId, author: e.author };
       }));
-      let idx = entries.findIndex((e) => e.coverId === cId);
-      if (idx < 0) idx = entries.findIndex((e) => (e.driveId === dId) || (e.author === author) || (e.file === file));
+      let idx = visible.findIndex((e) => e.coverId === cId);
+      if (idx < 0) idx = visible.findIndex((e) => (e.driveId === dId) || (e.author === author) || (e.file === file));
       if (idx < 0) { alert('No se pudo abrir la imagen.'); return; }
       openImageCarousel(itemsForViewer, idx);
     });
