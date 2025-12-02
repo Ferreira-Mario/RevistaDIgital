@@ -1169,7 +1169,11 @@ function getAllCandidateUrls(fileName, authorName, titleHint) {
   if (DRIVE_ONLY) return [];
   const DIRS = [
     './IMGs/Bocetos/Portadas',
-    './IMGs/Bocetos/Sección 1'
+    './IMGs/Bocetos/Sección 1',
+    './IMGs/Bocetos/Sección 2',
+    './IMGs/Bocetos/Sección 3',
+    './IMGs/Bocetos/Sección 4',
+    './IMGs/Bocetos/Sección 5'
   ];
   const bases = [fileName, authorName, titleHint].filter(Boolean);
   const fileCandidates = Array.from(new Set(bases.flatMap((b)=> makeFileCandidates(String(b||'').trim()))));
@@ -2153,11 +2157,13 @@ async function renderResults(sectionId) {
       const author = btn.getAttribute('data-author') || '';
       const dId = btn.getAttribute('data-drive-id') || '';
       const cId = btn.getAttribute('data-cover-id') || '';
+      const imgUrlAttr = btn.getAttribute('data-image-url') || '';
       const currentSection = (document.body && document.body.dataset) ? (document.body.dataset.section || sectionId) : sectionId;
       const titleLabel = `${sectionNames[currentSection] || currentSection} (boceto)`;
       const itemsForViewer = await Promise.all(entries.map(async (e) => {
         let u = e.driveId ? resolveDriveUrl(e.driveId, 'w2000') : '';
         if (!u) u = await resolveImageFromDirs(e.file || '', e.author || '', titleLabel || '');
+        if (!u && e.coverId === cId && imgUrlAttr) u = imgUrlAttr;
         return { url: u, title: titleLabel, coverId: e.coverId, author: e.author };
       }));
       let idx = entries.findIndex((e) => e.coverId === cId);
