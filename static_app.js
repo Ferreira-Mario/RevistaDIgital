@@ -869,16 +869,23 @@ async function renderSection(sectionId) {
 
   sectionTitleEl.textContent = sectionNames[sectionId] || 'Bocetos';
   coversGrid.innerHTML = '';
+  
   if (!covers.length) {
     coversGrid.innerHTML = `<div class="text-center py-10 text-gray-500 col-span-full">No hay portadas en esta sección</div>`;
     return;
+  }
+
+  // Centrar si hay pocos items (1 o 2) en el fallback de JSON
+  if (covers.length < 3) {
+    coversGrid.classList.remove('grid-cols-1', 'sm:grid-cols-2', 'lg:grid-cols-3', 'xl:grid-cols-3');
+    coversGrid.classList.add('flex', 'flex-wrap', 'justify-center');
   }
 
   covers.forEach(async (cover) => {
     const titleDetected = `${sectionNames[sectionId] || sectionId} (boceto)`;
 
     const card = document.createElement('article');
-    card.className = 'group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow';
+    card.className = 'group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow w-full max-w-sm';
     card.dataset.coverId = cover.id;
 
     const cidBase = (card.dataset.driveId ? `img_${card.dataset.driveId}` : (String(card.dataset.coverId||'').trim() || cover.id));
