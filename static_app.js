@@ -316,7 +316,22 @@ function route() {
         }
       });
       updateActiveFilter();
-      startAuto();
+      
+      // Manejo de pocos items en carrusel
+      if (items.length <= 4) {
+        stopAuto();
+        track.style.justifyContent = 'center';
+        track.style.transform = 'none';
+        // Ocultar botones si no hay scroll
+        if (prev) prev.style.display = 'none';
+        if (next) next.style.display = 'none';
+      } else {
+        if (prev) prev.style.display = 'flex';
+        if (next) next.style.display = 'flex';
+        track.style.justifyContent = 'flex-start';
+        startAuto();
+      }
+      
       updateScroll();
     }
 
@@ -610,6 +625,8 @@ async function renderSection(sectionId) {
 
   if (sectionTitleEl) sectionTitleEl.textContent = sectionNames[sectionId] || 'Bocetos';
   coversGrid.innerHTML = '';
+  // Reset grid layout classes
+  coversGrid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 sm:gap-6';
 
   // Render basado en índice de Drive para todas las secciones
   if (sectionId === 'portada' || (String(sectionId||'').startsWith('seccion'))) {
@@ -619,6 +636,12 @@ async function renderSection(sectionId) {
       return;
     }
 
+    // Centrar si hay pocos items (1 o 2)
+    if (items.length < 3) {
+      coversGrid.classList.remove('grid-cols-1', 'sm:grid-cols-2', 'lg:grid-cols-3', 'xl:grid-cols-3');
+      coversGrid.classList.add('flex', 'flex-wrap', 'justify-center');
+    }
+
     items.forEach(async (item) => {
       const file = String(item.file || '').trim();
       const authorName = item.author || displayNameOverrides(getTitleFromPath(file));
@@ -626,7 +649,7 @@ async function renderSection(sectionId) {
       const coverId = `img_${getTitleFromPath(file).toLowerCase().replace(/\s+/g, '_')}`;
 
       const card = document.createElement('article');
-      card.className = 'group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow min-h-[340px]';
+      card.className = 'group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow min-h-[340px] w-full max-w-sm';
       card.innerHTML = `
         <div class="h-56 sm:h-72 bg-gray-100 overflow-hidden relative" data-role="header">
           <img alt="Miniatura de ${displayTitle}" loading="lazy"
