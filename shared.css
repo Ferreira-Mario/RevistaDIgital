@@ -376,4 +376,32 @@ html[data-theme="mono"] img { filter: grayscale(100%); }
   background: #4338ca;
 }
 
+/* Sombra de la bisagra central del lomo en 3D premium (Multiply Blended) */
+.magazine-spine-shadow {
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 8% !important;
+  pointer-events: none !important;
+  z-index: 30 !important;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.02) 20%,
+    rgba(0, 0, 0, 0.08) 40%,
+    rgba(0, 0, 0, 0.22) 46%,
+    rgba(0, 0, 0, 0.45) 49.5%,
+    rgba(0, 0, 0, 0.55) 50%,
+    rgba(0, 0, 0, 0.45) 50.5%,
+    rgba(0, 0, 0, 0.22) 54%,
+    rgba(0, 0, 0, 0.08) 60%,
+    rgba(0, 0, 0, 0.02) 80%,
+    rgba(0, 0, 0, 0) 100%
+  ) !important;
+  mix-blend-mode: multiply !important;
+  opacity: 0.9 !important;
+}
+
 

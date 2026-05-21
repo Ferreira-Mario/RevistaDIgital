@@ -2486,128 +2486,168 @@ async function renderMagazine() {
 
       const direction = to > idx ? 'next' : 'prev';
 
-      if (!flipPage || !flipImgFront || !flipImgBack || !leftPage || !rightPage || !leftImg || !rightImg) {
-        if (pageWrap) {
-          pageWrap.style.opacity = '0.3';
-          pageWrap.style.transition = 'opacity 200ms ease';
-        }
-        setTimeout(() => {
-          idx = to;
-          update();
-          if (pageWrap) pageWrap.style.opacity = '1';
-          isFlipping = false;
-        }, 200);
-        return;
-      }
-
-      // Preparar el estado inicial de la animación
-      flipPage.classList.remove('animate-flip-next', 'animate-flip-prev');
-      if (flipShineFront) flipShineFront.classList.remove('animate-shine-front');
-      if (flipShineBack) flipShineBack.classList.remove('animate-shine-back');
-
-      if (direction === 'next') {
-        if (idx === 0) {
-          leftPage.classList.add('hidden');
-          leftImg.src = '';
-        } else {
-          leftImg.src = pages[2 * idx - 1].url;
-          leftPage.classList.remove('hidden');
+      try {
+        if (!flipPage || !flipImgFront || !flipImgBack || !leftPage || !rightPage || !leftImg || !rightImg) {
+          if (pageWrap) {
+            pageWrap.style.opacity = '0.3';
+            pageWrap.style.transition = 'opacity 200ms ease';
+          }
+          setTimeout(() => {
+            idx = to;
+            update();
+            if (pageWrap) pageWrap.style.opacity = '1';
+            isFlipping = false;
+          }, 200);
+          return;
         }
 
-        const rightPageObj = pages[2 * to];
-        if (rightPageObj) {
-          rightImg.src = rightPageObj.url;
-          rightImg.style.visibility = 'visible';
-          rightPage.classList.remove('hidden');
-        } else {
-          rightImg.src = '';
-          rightImg.style.visibility = 'hidden';
-          rightPage.classList.remove('hidden');
-        }
-
-        flipPage.style.left = '50%';
-        flipPage.style.width = '50%';
-        flipPage.style.transformOrigin = 'left center';
-
-        const frontPageObj = idx === 0 ? pages[0] : pages[2 * idx];
-        if (frontPageObj) {
-          flipImgFront.src = frontPageObj.url;
-          flipImgFront.className = "w-full h-full object-contain object-left pointer-events-none select-none";
-        }
-
-        const backPageObj = pages[2 * to - 1];
-        if (backPageObj) {
-          flipImgBack.src = backPageObj.url;
-          flipImgBack.className = "w-full h-full object-contain object-right pointer-events-none select-none";
-        }
-
-        pageWrap.style.opacity = '0';
-        flipPage.classList.remove('hidden');
-
-        // Activar animaciones CSS tridimensionales
-        flipPage.classList.add('animate-flip-next');
-        if (flipShineFront) flipShineFront.classList.add('animate-shine-front');
-        if (flipShineBack) flipShineBack.classList.add('animate-shine-back');
-
-      } else {
-        if (to === 0) {
-          leftPage.classList.add('hidden');
-          leftImg.src = '';
-        } else {
-          leftImg.src = pages[2 * to - 1].url;
-          leftPage.classList.remove('hidden');
-        }
-
-        const rightPageObj = pages[2 * idx];
-        if (rightPageObj) {
-          rightImg.src = rightPageObj.url;
-          rightImg.style.visibility = 'visible';
-          rightPage.classList.remove('hidden');
-        } else {
-          rightImg.src = '';
-          rightImg.style.visibility = 'hidden';
-          rightPage.classList.remove('hidden');
-        }
-
-        flipPage.style.left = '0';
-        flipPage.style.width = '50%';
-        flipPage.style.transformOrigin = 'right center';
-
-        const frontPageObj = pages[2 * idx - 1];
-        if (frontPageObj) {
-          flipImgFront.src = frontPageObj.url;
-          flipImgFront.className = "w-full h-full object-contain object-right pointer-events-none select-none";
-        }
-
-        const backPageObj = pages[2 * to];
-        if (backPageObj) {
-          flipImgBack.src = backPageObj.url;
-          flipImgBack.className = "w-full h-full object-contain object-left pointer-events-none select-none";
-        }
-
-        pageWrap.style.opacity = '0';
-        flipPage.classList.remove('hidden');
-
-        // Activar animaciones CSS tridimensionales
-        flipPage.classList.add('animate-flip-prev');
-        if (flipShineFront) flipShineFront.classList.add('animate-shine-front');
-        if (flipShineBack) flipShineBack.classList.add('animate-shine-back');
-      }
-
-      setTimeout(() => {
-        idx = to;
-        update();
-        pageWrap.style.opacity = '1';
-        flipPage.classList.add('hidden');
-        leftPage.classList.add('hidden');
-        rightPage.classList.add('hidden');
-        
+        // Preparar el estado inicial de la animación
         flipPage.classList.remove('animate-flip-next', 'animate-flip-prev');
         if (flipShineFront) flipShineFront.classList.remove('animate-shine-front');
         if (flipShineBack) flipShineBack.classList.remove('animate-shine-back');
-        
+
+        if (direction === 'next') {
+          if (idx === 0) {
+            leftPage.classList.add('hidden');
+            leftImg.src = '';
+          } else {
+            const lpObj = pages[2 * idx - 1];
+            leftImg.src = lpObj ? lpObj.url : '';
+            if (lpObj) {
+              leftPage.classList.remove('hidden');
+            } else {
+              leftPage.classList.add('hidden');
+            }
+          }
+
+          const rightPageObj = pages[2 * to];
+          if (rightPageObj) {
+            rightImg.src = rightPageObj.url;
+            rightImg.style.visibility = 'visible';
+            rightPage.classList.remove('hidden');
+          } else {
+            rightImg.src = '';
+            rightImg.style.visibility = 'hidden';
+            rightPage.classList.remove('hidden');
+          }
+
+          flipPage.style.left = '50%';
+          flipPage.style.width = '50%';
+          flipPage.style.transformOrigin = 'left center';
+
+          const frontPageObj = idx === 0 ? pages[0] : pages[2 * idx];
+          if (frontPageObj) {
+            flipImgFront.src = frontPageObj.url;
+            flipImgFront.className = "w-full h-full object-contain object-left pointer-events-none select-none";
+          } else {
+            flipImgFront.src = '';
+          }
+
+          const backPageObj = pages[2 * to - 1];
+          if (backPageObj) {
+            flipImgBack.src = backPageObj.url;
+            flipImgBack.className = "w-full h-full object-contain object-right pointer-events-none select-none";
+          } else {
+            flipImgBack.src = '';
+          }
+
+          pageWrap.style.opacity = '0';
+          flipPage.classList.remove('hidden');
+
+          // Forzar reflujo del navegador para garantizar que se dispare la animación 3D
+          void flipPage.offsetWidth;
+
+          // Activar animaciones CSS tridimensionales
+          flipPage.classList.add('animate-flip-next');
+          if (flipShineFront) flipShineFront.classList.add('animate-shine-front');
+          if (flipShineBack) flipShineBack.classList.add('animate-shine-back');
+
+        } else {
+          if (to === 0) {
+            leftPage.classList.add('hidden');
+            leftImg.src = '';
+          } else {
+            const lpObj = pages[2 * to - 1];
+            leftImg.src = lpObj ? lpObj.url : '';
+            if (lpObj) {
+              leftPage.classList.remove('hidden');
+            } else {
+              leftPage.classList.add('hidden');
+            }
+          }
+
+          const rightPageObj = pages[2 * idx];
+          if (rightPageObj) {
+            rightImg.src = rightPageObj.url;
+            rightImg.style.visibility = 'visible';
+            rightPage.classList.remove('hidden');
+          } else {
+            rightImg.src = '';
+            rightImg.style.visibility = 'hidden';
+            rightPage.classList.remove('hidden');
+          }
+
+          flipPage.style.left = '0';
+          flipPage.style.width = '50%';
+          flipPage.style.transformOrigin = 'right center';
+
+          const frontPageObj = pages[2 * idx - 1];
+          if (frontPageObj) {
+            flipImgFront.src = frontPageObj.url;
+            flipImgFront.className = "w-full h-full object-contain object-right pointer-events-none select-none";
+          } else {
+            flipImgFront.src = '';
+          }
+
+          const backPageObj = pages[2 * to];
+          if (backPageObj) {
+            flipImgBack.src = backPageObj.url;
+            flipImgBack.className = "w-full h-full object-contain object-left pointer-events-none select-none";
+          } else {
+            flipImgBack.src = '';
+          }
+
+          pageWrap.style.opacity = '0';
+          flipPage.classList.remove('hidden');
+
+          // Forzar reflujo del navegador para garantizar que se dispare la animación 3D
+          void flipPage.offsetWidth;
+
+          // Activar animaciones CSS tridimensionales
+          flipPage.classList.add('animate-flip-prev');
+          if (flipShineFront) flipShineFront.classList.add('animate-shine-front');
+          if (flipShineBack) flipShineBack.classList.add('animate-shine-back');
+        }
+
+        setTimeout(() => {
+          idx = to;
+          update();
+          pageWrap.style.opacity = '1';
+          flipPage.classList.add('hidden');
+          leftPage.classList.add('hidden');
+          rightPage.classList.add('hidden');
+          
+          flipPage.classList.remove('animate-flip-next', 'animate-flip-prev');
+          if (flipShineFront) flipShineFront.classList.remove('animate-shine-front');
+          if (flipShineBack) flipShineBack.classList.remove('animate-shine-back');
+          
+          isFlipping = false;
+        }, 570);
+
+      } catch (err) {
+        console.error("Error durante la animación 3D del pase de página:", err);
+        // Fallback inmediato y seguro para evitar bloqueos
+        idx = to;
+        update();
+        if (pageWrap) pageWrap.style.opacity = '1';
+        if (flipPage) {
+          flipPage.classList.add('hidden');
+          flipPage.classList.remove('animate-flip-next', 'animate-flip-prev');
+        }
+        if (leftPage) leftPage.classList.add('hidden');
+        if (rightPage) rightPage.classList.add('hidden');
         isFlipping = false;
-      }, 570);
+      }
     }
 
     // Animación de deslizamiento y fade para Modo Página Única
@@ -2617,20 +2657,32 @@ async function renderMagazine() {
 
       const direction = to > idx ? 'next' : 'prev';
 
-      if (img.animate) {
-        img.animate([
-          { opacity: 1, transform: 'translateX(0) scale(1)' },
-          { opacity: 0, transform: `translateX(${direction === 'next' ? '-50px' : '50px'}) scale(0.95)` }
-        ], { duration: 180, easing: 'ease-in-out' }).onfinish = () => {
+      try {
+        if (img && img.animate) {
+          img.animate([
+            { opacity: 1, transform: 'translateX(0) scale(1)' },
+            { opacity: 0, transform: `translateX(${direction === 'next' ? '-50px' : '50px'}) scale(0.95)` }
+          ], { duration: 180, easing: 'ease-in-out' }).onfinish = () => {
+            try {
+              idx = to;
+              update();
+              img.animate([
+                { opacity: 0, transform: `translateX(${direction === 'next' ? '50px' : '-50px'}) scale(0.95)` },
+                { opacity: 1, transform: 'translateX(0) scale(1)' }
+              ], { duration: 180, easing: 'ease-out' });
+            } catch (errInner) {
+              console.error("Error interno en animación de pase de página única:", errInner);
+            } finally {
+              isFlipping = false;
+            }
+          };
+        } else {
           idx = to;
           update();
-          img.animate([
-            { opacity: 0, transform: `translateX(${direction === 'next' ? '50px' : '-50px'}) scale(0.95)` },
-            { opacity: 1, transform: 'translateX(0) scale(1)' }
-          ], { duration: 180, easing: 'ease-out' });
           isFlipping = false;
-        };
-      } else {
+        }
+      } catch (err) {
+        console.error("Error durante la animación de pase de página única:", err);
         idx = to;
         update();
         isFlipping = false;
