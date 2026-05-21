@@ -111,6 +111,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
     <script src="./firebase_config.js"></script>
     <script>window.siteLogoDriveId='1TOwUQQen3hM78o9Lx3rY2idclhB-poPq'</script>
+    <script>
+      try { sessionStorage.setItem('abp_admin', '1'); } catch {}
+    </script>
     <script src="./static_app.js"></script>
     <script>
       document.addEventListener('DOMContentLoaded', () => {
@@ -127,9 +130,9 @@
         function setStatus(t){ if(statusEl){ statusEl.textContent = t; } }
         if (resetAllBtn) resetAllBtn.addEventListener('click', async () => { setStatus('Reseteando todo...'); try { if (typeof window.resetAllVotes==='function') await window.resetAllVotes(); setStatus('Listo'); } catch { setStatus('Error'); } });
         if (resetSectionBtn) resetSectionBtn.addEventListener('click', async () => { const s = sectionSel.value || 'portada'; setStatus('Reseteando sección...'); try { if (typeof window.resetVotesSection==='function') await window.resetVotesSection(s); setStatus('Listo'); } catch { setStatus('Error'); } });
-        if (resetCoverBtn) resetCoverBtn.addEventListener('click', async () => { const cid = String((coverInput && coverInput.value)||'').trim(); if(!cid){ setStatus('Ingresa un Cover ID'); return; } setStatus('Reseteando imagen...'); try { if (window.db) { await db.collection('votes').doc(cid).set({ count: 0 }, { merge: true }); } try { localStorage.removeItem(`votes_local_${cid}`); localStorage.removeItem(`voted_${cid}`); } catch {} setStatus('Listo'); } catch { setStatus('Error'); } });
+        if (resetCoverBtn) resetCoverBtn.addEventListener('click', async () => { const cid = String((coverInput && coverInput.value)||'').trim(); if(!cid){ setStatus('Ingresa un Cover ID'); return; } setStatus('Reseteando imagen...'); try { if (typeof db !== 'undefined' && db) { await db.collection('votes').doc(cid).set({ count: 0 }, { merge: true }); } try { localStorage.removeItem(`votes_local_${cid}`); localStorage.removeItem(`voted_${cid}`); } catch {} setStatus('Listo'); } catch { setStatus('Error'); } });
         if (resetAuthorBtn) resetAuthorBtn.addEventListener('click', async () => { const s = sectionSel.value || 'portada'; const q = String((authorInput && authorInput.value)||'').trim(); if(!q){ setStatus('Ingresa autor'); return; } setStatus('Reseteando por autor...'); try { if (typeof window.resetVotesByAuthor==='function') await window.resetVotesByAuthor(s, q); setStatus('Listo'); } catch { setStatus('Error'); } });
-        if (listIdsBtn) listIdsBtn.addEventListener('click', async () => { const s = sectionSel.value || 'portada'; setStatus('Listando IDs...'); try { const ids = (typeof window.listCoverIdsForSection==='function') ? await window.listCoverIdsForSection(s) : []; idsEl.innerHTML = ids.map(id => `<li>${id}</li>`).join(''); setStatus(`Encontrados ${ids.length}`); } catch { setStatus('Error'); } });
+        if (listIdsBtn) listIdsBtn.addEventListener('click', async () => { const s = sectionSel.value || 'portada'; setStatus('Listando IDs...'); try { const ids = (typeof window.listCoverIdsForSection==='function') ? await window.listCoverIdsForSection(s) : []; idsEl.textContent = ''; for (const id of ids) { const li = document.createElement('li'); li.textContent = String(id); idsEl.appendChild(li); } setStatus(`Encontrados ${ids.length}`); } catch { setStatus('Error'); } });
       });
     </script>
   </body>

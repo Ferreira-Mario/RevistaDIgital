@@ -454,6 +454,25 @@ async function listCoverIdsForSection(sectionId) {
   } catch { return []; }
 }
 
+function escapeHtml(input) {
+  const s = String(input ?? '');
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function isAdminMode() {
+  try {
+    const path = String(window.location && window.location.pathname || '');
+    if (/\/admin\.html$/i.test(path) || /^admin\.html$/i.test(path.replace(/^\//, ''))) return true;
+  } catch {}
+  try { if (sessionStorage.getItem('abp_admin') === '1') return true; } catch {}
+  return false;
+}
+
 async function resetVotesSection(sectionId) {
   const ids = await listCoverIdsForSection(sectionId);
   for (const id of ids) {
@@ -465,7 +484,9 @@ async function resetVotesSection(sectionId) {
   }
 }
 
-window.resetAllVotes = async function resetAllVotes() {
+const _adminMode = isAdminMode();
+
+const resetAllVotesImpl = async function resetAllVotes() {
   try {
     const sections = ['portada','seccion1','seccion2','seccion3','seccion4','seccion5'];
     for (const s of sections) { await resetVotesSection(s); }
@@ -478,21 +499,29 @@ window.resetAllVotes = async function resetAllVotes() {
   } catch {}
 };
 
-window.resetVotesSection = resetVotesSection;
-window.listCoverIdsForSection = listCoverIdsForSection;
-var resetAllVotes = window.resetAllVotes;
+if (_adminMode) {
+  window.resetAllVotes = resetAllVotesImpl;
+  window.resetVotesSection = resetVotesSection;
+  window.listCoverIdsForSection = listCoverIdsForSection;
+  var resetAllVotes = window.resetAllVotes;
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     const qs = new URLSearchParams(window.location.search || '');
+    const wantsReset = qs.get('resetAllVotes') === '1' || !!qs.get('resetSection') || !!qs.get('resetCoverId') || (qs.get('section') && qs.get('resetAuthor'));
+    if (!_adminMode) {
+      if (wantsReset) return;
+      return;
+    }
     if (qs.get('resetAllVotes') === '1') {
-      if (typeof window.resetAllVotes === 'function') { await window.resetAllVotes(); }
+      if (typeof resetAllVotesImpl === 'function') { await resetAllVotesImpl(); }
     }
     const sec = qs.get('resetSection');
-    if (sec && typeof window.resetVotesSection === 'function') { await window.resetVotesSection(sec); }
+    if (sec) { await resetVotesSection(sec); }
     const sec2 = qs.get('section');
     const auth = qs.get('resetAuthor');
-    if (sec2 && auth && typeof window.resetVotesByAuthor === 'function') { await window.resetVotesByAuthor(sec2, auth); }
+    if (sec2 && auth && typeof resetVotesByAuthor === 'function') { await resetVotesByAuthor(sec2, auth); }
     const cid = qs.get('resetCoverId');
     if (cid && db) {
       try { await db.collection('votes').doc(String(cid)).set({ count: 0 }, { merge: true }); } catch {}
@@ -524,7 +553,7 @@ async function resetVotesByAuthor(sectionId, authorQuery) {
   } catch { return 0; }
 }
 
-window.resetVotesByAuthor = resetVotesByAuthor;
+if (_adminMode) window.resetVotesByAuthor = resetVotesByAuthor;
 
 function refreshCardVotes(card) {
   if (!card) return;
@@ -646,19 +675,21 @@ async function renderSection(sectionId) {
       const file = String(item.file || '').trim();
       const authorName = item.author || displayNameOverrides(getTitleFromPath(file));
       const displayTitle = `${sectionNames[sectionId] || sectionId} (boceto)`;
+      const safeAuthorName = escapeHtml(authorName);
+      const safeDisplayTitle = escapeHtml(displayTitle);
       const coverId = `img_${getTitleFromPath(file).toLowerCase().replace(/\s+/g, '_')}`;
 
       const card = document.createElement('article');
       card.className = 'group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow min-h-[340px] w-full max-w-sm';
       card.innerHTML = `
         <div class="h-56 sm:h-72 bg-gray-100 overflow-hidden relative" data-role="header">
-          <img alt="Miniatura de ${displayTitle}" loading="lazy"
+          <img alt="Miniatura de ${safeDisplayTitle}" loading="lazy"
                class="w-full h-full object-cover transform transition-transform duration-300 ease-out group-hover:scale-110"
                data-role="thumb">
         </div>
         <div class="p-6">
-          <h3 class="text-2xl sm:text-3xl font-bold mb-1">${authorName}</h3>
-          <p class="text-gray-600 mb-4 line-clamp-2">${displayTitle}</p>
+          <h3 class="text-2xl sm:text-3xl font-bold mb-1">${safeAuthorName}</h3>
+          <p class="text-gray-600 mb-4 line-clamp-2">${safeDisplayTitle}</p>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 items-stretch">
             <button class="btn-outline flex-1 px-5 py-3 min-h-[48px] text-base sm:text-lg whitespace-nowrap" data-action="info">Info</button>
             <button class="btn-primary flex-1 px-5 py-3 min-h-[48px] text-base sm:text-lg whitespace-nowrap flex items-center justify-center gap-2" data-action="view">
@@ -883,6 +914,8 @@ async function renderSection(sectionId) {
 
   covers.forEach(async (cover) => {
     const titleDetected = `${sectionNames[sectionId] || sectionId} (boceto)`;
+    const safeTitleDetected = escapeHtml(titleDetected);
+    const safeDesc = escapeHtml(cover.description || '');
 
     const card = document.createElement('article');
     card.className = 'group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow w-full max-w-sm';
@@ -892,13 +925,13 @@ async function renderSection(sectionId) {
     let votedLocal = lsGet(`voted_${cidBase}`, 'false') === 'true';
     card.innerHTML = `
       <div class="h-56 sm:h-72 bg-gray-100 overflow-hidden relative" data-role="header">
-        <img alt="Miniatura de ${titleDetected}" loading="lazy"
+        <img alt="Miniatura de ${safeTitleDetected}" loading="lazy"
              class="w-full h-full object-cover transform transition-transform duration-300 ease-out group-hover:scale-110"
              data-role="thumb">
       </div>
       <div class="p-6">
-        <h3 class="text-2xl sm:text-3xl font-bold mb-2">${titleDetected}</h3>
-        <p class="text-gray-600 mb-4 line-clamp-2">${cover.description || ''}</p>
+        <h3 class="text-2xl sm:text-3xl font-bold mb-2">${safeTitleDetected}</h3>
+        <p class="text-gray-600 mb-4 line-clamp-2">${safeDesc}</p>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 items-stretch">
           <button class="flex-1 px-5 py-3 min-h-[48px] bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-base sm:text-lg whitespace-nowrap" data-action="info">Info</button>
           <button class="flex-1 px-5 py-3 min-h-[48px] bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 text-base sm:text-lg whitespace-nowrap" data-action="view">
@@ -1087,7 +1120,10 @@ function showInfo(info) {
   infoList.innerHTML = '';
   for (const [k, v] of Object.entries(info)) {
     const li = document.createElement('li');
-    li.innerHTML = `<strong>${k}:</strong> ${v}`;
+    const strong = document.createElement('strong');
+    strong.textContent = `${k}: `;
+    li.appendChild(strong);
+    li.appendChild(document.createTextNode(String(v ?? '')));
     infoList.appendChild(li);
   }
   infoPopup.classList.remove('hidden');
@@ -1531,7 +1567,6 @@ function getTitleFromPath(path) {
   viewerImage.addEventListener('touchend', async (e) => {
     const t=e.changedTouches[0]; const dx=t.clientX - touchStartX; const dy=t.clientY - touchStartY;
     if (Math.abs(dx) > 50 && Math.abs(dy) < 80) { if (dx < 0) await setViewerFromItem(viewerIndex + 1); else await setViewerFromItem(viewerIndex - 1); }
-    positionOverlays();
   }, {passive:true});
   
   if (voteViewerBtn) voteViewerBtn.addEventListener('click', async () => {
@@ -2147,25 +2182,31 @@ async function renderResults(sectionId) {
     const crowns = ['🥇','🥈','🥉'];
     const cards = sorted.map((e, i) => {
       const dUrl = e.driveId ? resolveDriveUrl(e.driveId, 'w600') : '';
+      const safeCoverId = escapeHtml(e.coverId);
+      const safeDriveId = escapeHtml(e.driveId || '');
+      const safeFile = escapeHtml(e.file);
+      const safeAuthor = escapeHtml(e.author);
+      const safeDUrl = escapeHtml(dUrl);
       const sizeClass = i === 0 ? 'sm:col-span-1 sm:order-2' : (i === 1 ? 'sm:order-1' : 'sm:order-3');
       return `
-        <div class="bg-white rounded-2xl shadow-lg p-6 sm:p-8 text-center ${sizeClass}" data-result-card="true" data-cover-id="${e.coverId}" data-drive-id="${e.driveId || ''}" data-file="${e.file}" data-author="${e.author}" data-image-url="${dUrl}">
+        <div class="bg-white rounded-2xl shadow-lg p-6 sm:p-8 text-center ${sizeClass}" data-result-card="true" data-cover-id="${safeCoverId}" data-drive-id="${safeDriveId}" data-file="${safeFile}" data-author="${safeAuthor}" data-image-url="${safeDUrl}">
           <div class="text-5xl">${crowns[i]}</div>
           <div class="mt-3 w-full overflow-hidden rounded-xl bg-gray-100">
-            ${dUrl ? `<img src="${dUrl}" alt="${e.author}" loading="lazy" class="w-full h-56 object-cover" data-role="result-thumb">` : ''}
+            ${dUrl ? `<img src="${safeDUrl}" alt="${safeAuthor}" loading="lazy" class="w-full h-56 object-cover" data-role="result-thumb">` : ''}
           </div>
-          <h3 class="text-2xl sm:text-3xl font-bold mt-3">${e.author}</h3>
+          <h3 class="text-2xl sm:text-3xl font-bold mt-3">${safeAuthor}</h3>
           <div class="mt-2 text-2xl font-extrabold text-indigo-600">${e.votes} votos</div>
           <div class="mt-4 flex justify-center">
-            <button class="btn-primary text-lg px-6 py-3" data-action="view" data-file="${e.file}" data-author="${e.author}" data-drive-id="${e.driveId || ''}" data-image-url="${dUrl}" data-cover-id="${e.coverId}">Ver</button>
+            <button class="btn-primary text-lg px-6 py-3" data-action="view" data-file="${safeFile}" data-author="${safeAuthor}" data-drive-id="${safeDriveId}" data-image-url="${safeDUrl}" data-cover-id="${safeCoverId}">Ver</button>
           </div>
         </div>
       `;
     }).join('');
+    const safeSectionLabel = escapeHtml(sectionNames[sectionId] || sectionId);
     resultsGrid.innerHTML = `
       <div class="max-w-6xl mx-auto">
         <div class="flex items-center justify-between mb-3">
-          <h3 class="text-xl font-bold">${sectionNames[sectionId] || sectionId}</h3>
+          <h3 class="text-xl font-bold">${safeSectionLabel}</h3>
           <div class="text-sm text-gray-600">Total votos: <span class="font-semibold">${total}</span></div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-8 items-end py-4">
@@ -2214,6 +2255,9 @@ async function renderResults(sectionId) {
       const domIdx = cardsEls.indexOf(cardEl);
       const cId = cardEl.getAttribute('data-cover-id') || '';
       const imgUrlAttr = cardEl.getAttribute('data-image-url') || '';
+      const dId = cardEl.getAttribute('data-drive-id') || '';
+      const author = cardEl.getAttribute('data-author') || '';
+      const file = cardEl.getAttribute('data-file') || '';
       const currentSection = sectionId;
       const titleLabel = `${sectionNames[currentSection] || currentSection} (boceto)`;
       const visible = [...entries].sort((a,b) => b.votes - a.votes).slice(0,3);
@@ -2281,6 +2325,19 @@ const USE_REALTIME = true;
     }
     files = Array.isArray(files) ? files : [];
     const pages = files.map(f => ({ id: f.id, name: f.name, url: resolveDriveUrl(f.id, 'w2000') }));
+    
+    // Ordenar páginas numéricamente por su nombre de archivo (ej. "1.png", "2.png", "10.png")
+    const getNum = (name) => {
+      const m = String(name || '').match(/^(\d+)/);
+      return m ? parseInt(m[1], 10) : Infinity;
+    };
+    pages.sort((a, b) => {
+      const numA = getNum(a.name);
+      const numB = getNum(b.name);
+      if (numA !== numB) return numA - numB;
+      return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
+    });
+
     let idx = 0;
     function update() {
       const p = pages[idx];
