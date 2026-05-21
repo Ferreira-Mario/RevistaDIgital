@@ -283,7 +283,17 @@ A través del ABP, transformamos nuestras habilidades en un proyecto real: una r
             </div>
 
             <!-- Indicadores de Zoom y Página Activa -->
-            <div class="w-full md:w-auto flex items-center justify-between md:justify-end gap-6 border-t md:border-t-0 pt-3 md:pt-0">
+            <div class="w-full md:w-auto flex flex-wrap items-center justify-between md:justify-end gap-4 border-t md:border-t-0 pt-3 md:pt-0">
+              <!-- Modos de Visualización -->
+              <div class="flex items-center gap-1 bg-gray-50 border rounded-xl p-1">
+                <button id="magViewModeBook" class="mag-view-btn mag-view-btn-active" title="Modo Libro (Doble Página)">
+                  📖 Libro
+                </button>
+                <button id="magViewModeSingle" class="mag-view-btn" title="Modo Página Única">
+                  📄 Página
+                </button>
+              </div>
+              
               <!-- Control de Zoom -->
               <div class="flex items-center gap-1.5 bg-gray-50 border rounded-xl p-1">
                 <button id="magZoomOut" class="px-2.5 py-1 text-sm font-bold text-gray-600 hover:bg-white hover:shadow-sm rounded-lg active:scale-95 transition-all" title="Alejar">-</button>
