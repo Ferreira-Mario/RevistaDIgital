@@ -206,8 +206,7 @@ function route() {
   if (resultsGrid && resultsSection) renderResults(resultsSection);
   const siteLogo = document.getElementById('siteLogo');
   const logoId = (window && window.siteLogoDriveId) ? window.siteLogoDriveId : '';
-  const onGithub = String(window.location.hostname || '').endsWith('.github.io');
-  if (siteLogo && onGithub && logoId) {
+  if (siteLogo && logoId) {
     const dUrl = resolveDriveUrl(logoId);
     if (dUrl) siteLogo.src = dUrl;
   }
