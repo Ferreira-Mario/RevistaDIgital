@@ -92,8 +92,42 @@ html[data-theme="mono"] img { filter: grayscale(100%); }
 
 /* Animaciones y estilos de transiciones tridimensionales */
 #magazineFlipPage {
-  box-shadow: 15px 0 35px rgba(0, 0, 0, 0.2);
-  transition: transform 600ms cubic-bezier(0.645, 0.045, 0.355, 1);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Soporte para doble cara física en el pase de página 3D */
+.magazine-page-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.05);
+}
+
+.magazine-page-front {
+  z-index: 2;
+  transform: rotateY(0deg);
+  border-left: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.magazine-page-back {
+  z-index: 1;
+  transform: rotateY(180deg);
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.magazine-page-shine {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+
+/* Título de la Revista en blanco al estar en Pantalla Completa */
+.magazine-fullscreen-active h2 {
+  color: #ffffff !important;
 }
 
 /* Scrubber interactivo personalizado */
@@ -129,4 +163,5 @@ html[data-theme="mono"] img { filter: grayscale(100%); }
   transform: scale(1.2);
   background: #4338ca;
 }
+
 

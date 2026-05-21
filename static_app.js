@@ -2333,10 +2333,17 @@ const USE_REALTIME = true;
     const fsToggle = document.getElementById('magFullscreenToggle');
     const card = document.getElementById('magazineCard');
     
-    // Elementos de animación 3D
+    // Elementos de animación 3D y capas temporales
     const flipPage = document.getElementById('magazineFlipPage');
-    const flipImg = document.getElementById('magazineFlipImage');
-    const flipShine = document.getElementById('magazineFlipShine');
+    const flipImgFront = document.getElementById('magazineFlipImageFront');
+    const flipImgBack = document.getElementById('magazineFlipImageBack');
+    const flipShineFront = document.getElementById('magazineFlipShineFront');
+    const flipShineBack = document.getElementById('magazineFlipShineBack');
+
+    const leftPage = document.getElementById('magazineLeftPage');
+    const leftImg = document.getElementById('magazineLeftImage');
+    const rightPage = document.getElementById('magazineRightPage');
+    const rightImg = document.getElementById('magazineRightImage');
 
     if (!viewport || !pageWrap || !img) return;
     
@@ -2404,13 +2411,14 @@ const USE_REALTIME = true;
     }
 
     // Animación 3D realista de Pase de Página (Page-Turn)
+    // Animación 3D realista de Pase de Página (Page-Turn) de doble cara
     function flip(to) {
       if (to === idx || isFlipping || !pages[to]) return;
       isFlipping = true;
 
       const direction = to > idx ? 'next' : 'prev';
 
-      if (!flipPage || !flipImg || !flipShine) {
+      if (!flipPage || !flipImgFront || !flipImgBack || !leftPage || !rightPage || !leftImg || !rightImg) {
         // Fallback de transición suave si fallan los elementos 3D
         img.style.opacity = '0.3';
         img.style.transition = 'opacity 200ms ease';
@@ -2423,81 +2431,134 @@ const USE_REALTIME = true;
         return;
       }
 
-      // Preparar texturas de transición
-      flipPage.classList.remove('hidden');
-      
+      // 1. Preparar las hojas temporales de fondo durante la animación
       if (direction === 'next') {
-        // Configurar pase de página hacia la izquierda
-        flipPage.style.transformOrigin = 'left center';
+        // Hoja izquierda muestra la página actual (se mantiene fija a la izquierda)
+        leftImg.src = pages[idx].url;
+        leftImg.style.left = '0';
+        leftImg.style.right = 'auto';
+        leftImg.style.width = '200%';
+        leftPage.classList.remove('hidden');
+
+        // Hoja derecha muestra la página destino (ya está lista a la derecha como fondo)
+        rightImg.src = pages[to].url;
+        rightImg.style.left = 'auto';
+        rightImg.style.right = '0';
+        rightImg.style.width = '200%';
+        rightPage.classList.remove('hidden');
+
+        // 2. Configurar la hoja que gira (Derecha a Izquierda)
         flipPage.style.left = '50%';
-        flipPage.style.right = '0';
         flipPage.style.width = '50%';
-        flipImg.style.left = 'auto';
-        flipImg.style.right = '0';
-        flipImg.style.width = '200%';
-        flipImg.src = pages[idx].url; // Muestra la página actual que se está doblando
+        flipPage.style.transformOrigin = 'left center';
 
-        // Lanzar animación tridimensional de pase
-        flipPage.style.transform = 'rotateY(0deg)';
-        
-        // Sincronizar el cambio de imagen a mitad del giro
-        setTimeout(() => {
-          flipImg.src = pages[to].url; // Muestra el reverso (página destino)
-          flipImg.style.left = '0';
-          flipImg.style.right = 'auto';
-        }, 280);
+        // Frente (muestra página actual, lado derecho)
+        flipImgFront.src = pages[idx].url;
+        flipImgFront.style.left = 'auto';
+        flipImgFront.style.right = '0';
+        flipImgFront.style.width = '200%';
 
+        // Reverso (muestra página destino, lado izquierdo)
+        flipImgBack.src = pages[to].url;
+        flipImgBack.style.left = '0';
+        flipImgBack.style.right = 'auto';
+        flipImgBack.style.width = '200%';
+
+        // Ocultar imagen estática principal para ver las piezas
+        img.style.opacity = '0';
+
+        // Mostrar hoja de volteo
+        flipPage.classList.remove('hidden');
+
+        // Lanzar animaciones nativas aceleradas por GPU
         flipPage.animate([
           { transform: 'rotateY(0deg)', zIndex: 30 },
           { transform: 'rotateY(-90deg)', zIndex: 30, offset: 0.5 },
           { transform: 'rotateY(-180deg)', zIndex: 10 }
         ], { duration: 580, easing: 'ease-in-out' });
 
-        flipShine.animate([
-          { opacity: 0 },
-          { opacity: 0.7, offset: 0.5 },
-          { opacity: 0 }
-        ], { duration: 580 });
+        if (flipShineFront && flipShineBack) {
+          flipShineFront.animate([
+            { opacity: 0 },
+            { opacity: 0.6, offset: 0.5 },
+            { opacity: 0 }
+          ], { duration: 580 });
+          flipShineBack.animate([
+            { opacity: 0 },
+            { opacity: 0.6, offset: 0.5 },
+            { opacity: 0 }
+          ], { duration: 580 });
+        }
 
       } else {
-        // Configurar pase de página hacia la derecha (retroceder)
-        flipPage.style.transformOrigin = 'right center';
+        // Hoja izquierda muestra la página destino (lista a la izquierda de fondo)
+        leftImg.src = pages[to].url;
+        leftImg.style.left = '0';
+        leftImg.style.right = 'auto';
+        leftImg.style.width = '200%';
+        leftPage.classList.remove('hidden');
+
+        // Hoja derecha muestra la página actual (se mantiene fija a la derecha)
+        rightImg.src = pages[idx].url;
+        rightImg.style.left = 'auto';
+        rightImg.style.right = '0';
+        rightImg.style.width = '200%';
+        rightPage.classList.remove('hidden');
+
+        // 2. Configurar la hoja que gira (Izquierda a Derecha)
         flipPage.style.left = '0';
-        flipPage.style.right = 'auto';
         flipPage.style.width = '50%';
-        flipImg.style.left = '0';
-        flipImg.style.right = 'auto';
-        flipImg.style.width = '200%';
-        flipImg.src = pages[to].url; // Muestra la página destino que regresa
+        flipPage.style.transformOrigin = 'right center';
 
-        flipPage.style.transform = 'rotateY(-180deg)';
+        // Frente (muestra página destino, lado derecho)
+        flipImgFront.src = pages[to].url;
+        flipImgFront.style.left = 'auto';
+        flipImgFront.style.right = '0';
+        flipImgFront.style.width = '200%';
 
-        setTimeout(() => {
-          flipImg.src = pages[idx].url; // Muestra la página actual saliendo
-          flipImg.style.left = 'auto';
-          flipImg.style.right = '0';
-        }, 280);
+        // Reverso (muestra página actual, lado izquierdo)
+        flipImgBack.src = pages[idx].url;
+        flipImgBack.style.left = '0';
+        flipImgBack.style.right = 'auto';
+        flipImgBack.style.width = '200%';
 
+        // Ocultar imagen estática principal para ver las piezas
+        img.style.opacity = '0';
+
+        // Mostrar hoja de volteo
+        flipPage.classList.remove('hidden');
+
+        // Lanzar animaciones nativas aceleradas por GPU
         flipPage.animate([
           { transform: 'rotateY(-180deg)', zIndex: 10 },
           { transform: 'rotateY(-90deg)', zIndex: 30, offset: 0.5 },
           { transform: 'rotateY(0deg)', zIndex: 30 }
         ], { duration: 580, easing: 'ease-in-out' });
 
-        flipShine.animate([
-          { opacity: 0 },
-          { opacity: 0.7, offset: 0.5 },
-          { opacity: 0 }
-        ], { duration: 580 });
+        if (flipShineFront && flipShineBack) {
+          flipShineFront.animate([
+            { opacity: 0 },
+            { opacity: 0.6, offset: 0.5 },
+            { opacity: 0 }
+          ], { duration: 580 });
+          flipShineBack.animate([
+            { opacity: 0 },
+            { opacity: 0.6, offset: 0.5 },
+            { opacity: 0 }
+          ], { duration: 580 });
+        }
       }
 
-      // Finalizar animación y consolidar estado
+      // Finalizar la animación y consolidar el estado de la página
       setTimeout(() => {
         idx = to;
         update();
+        img.style.opacity = '1';
         flipPage.classList.add('hidden');
+        leftPage.classList.add('hidden');
+        rightPage.classList.add('hidden');
         isFlipping = false;
-      }, 560);
+      }, 565);
     }
 
     // Funciones de navegación básica

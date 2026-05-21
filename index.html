@@ -202,7 +202,7 @@ A través del ABP, transformamos nuestras habilidades en un proyecto real: una r
             </button>
 
             <!-- El Contenedor con Perspectiva 3D -->
-            <div id="magazineBook" class="relative h-full aspect-[3/4] flex items-center justify-center transform-gpu select-none transition-transform duration-300" style="perspective: 2000px;">
+            <div id="magazineBook" class="relative h-full aspect-[4/3] flex items-center justify-center transform-gpu select-none transition-transform duration-300" style="perspective: 2000px;">
               
               <!-- Hoja Izquierda y Derecha Estáticas (Fondo para sensación de doble hoja) -->
               <div class="absolute inset-0 bg-white shadow-2xl rounded border border-neutral-200 overflow-hidden flex">
@@ -219,12 +219,31 @@ A través del ABP, transformamos nuestras habilidades en un proyecto real: una r
                 <div class="absolute inset-y-0 left-1/2 -translate-x-1/2 w-[6%] bg-gradient-to-r from-black/5 via-transparent to-black/5 pointer-events-none"></div>
               </div>
 
-              <!-- Capa de Pase de Página 3D (Se inserta dinámicamente durante la animación) -->
-              <div id="magazineFlipPage" class="absolute inset-y-0 right-0 w-1/2 z-20 origin-left hidden transform-gpu select-none">
-                <div class="relative w-full h-full overflow-hidden bg-white shadow-2xl">
-                  <img id="magazineFlipImage" alt="Página que dobla" class="absolute top-0 right-0 h-full object-contain pointer-events-none select-none" style="width: 200%; max-width: none;" />
-                  <!-- Capa de degradado de sombreado y brillo (simula curvatura del papel y luz) -->
-                  <div id="magazineFlipShine" class="absolute inset-0 bg-gradient-to-r from-black/40 via-white/20 to-black/10 transition-opacity duration-300"></div>
+              <!-- Hoja Izquierda Estática Temporaria (Solo visible durante la transición) -->
+              <div id="magazineLeftPage" class="absolute inset-y-0 left-0 w-1/2 z-15 hidden overflow-hidden bg-white shadow-2xl rounded-l border border-neutral-300/40 select-none">
+                <img id="magazineLeftImage" alt="Página izquierda" class="absolute top-0 left-0 h-full object-contain pointer-events-none select-none" style="width: 200%; max-width: none;" />
+                <div class="absolute inset-y-0 left-0 w-[8%] bg-gradient-to-r from-black/15 to-transparent pointer-events-none"></div>
+                <div class="absolute inset-y-0 right-0 w-[6%] bg-gradient-to-l from-black/10 via-transparent to-transparent pointer-events-none"></div>
+              </div>
+
+              <!-- Hoja Derecha Estática Temporaria (Solo visible durante la transición) -->
+              <div id="magazineRightPage" class="absolute inset-y-0 right-0 w-1/2 z-15 hidden overflow-hidden bg-white shadow-2xl rounded-r border border-neutral-300/40 select-none">
+                <img id="magazineRightImage" alt="Página derecha" class="absolute top-0 right-0 h-full object-contain pointer-events-none select-none" style="width: 200%; max-width: none;" />
+                <div class="absolute inset-y-0 right-0 w-[8%] bg-gradient-to-l from-black/15 to-transparent pointer-events-none"></div>
+                <div class="absolute inset-y-0 left-0 w-[6%] bg-gradient-to-r from-black/10 via-transparent to-transparent pointer-events-none"></div>
+              </div>
+
+              <!-- Capa de Pase de Página 3D (Doble cara física para evitar reflejos especulares de texto) -->
+              <div id="magazineFlipPage" class="absolute inset-y-0 z-20 hidden transform-gpu select-none" style="transform-style: preserve-3d;">
+                <!-- Cara Frontal (Página que se levanta) -->
+                <div class="magazine-page-face magazine-page-front">
+                  <img id="magazineFlipImageFront" alt="Cara frontal" class="absolute top-0 h-full object-contain pointer-events-none select-none" style="width: 200%; max-width: none;" />
+                  <div id="magazineFlipShineFront" class="magazine-page-shine bg-gradient-to-r from-black/30 via-white/10 to-transparent"></div>
+                </div>
+                <!-- Cara Trasera (Página revelada al reverso) -->
+                <div class="magazine-page-face magazine-page-back">
+                  <img id="magazineFlipImageBack" alt="Cara trasera" class="absolute top-0 h-full object-contain pointer-events-none select-none" style="width: 200%; max-width: none;" />
+                  <div id="magazineFlipShineBack" class="magazine-page-shine bg-gradient-to-l from-black/30 via-white/10 to-transparent"></div>
                 </div>
               </div>
 
