@@ -125,9 +125,19 @@ html[data-theme="mono"] img { filter: grayscale(100%); }
   opacity: 0;
 }
 
-/* Título de la Revista en blanco al estar en Pantalla Completa */
-.magazine-fullscreen-active h2 {
+.magazine-page-face img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+}
+
+/* Título de la Revista en blanco al estar en Pantalla Completa (anulando gradientes y transparencias) */
+.magazine-fullscreen-active h2,
+.magazine-fullscreen-active #magTitle {
   color: #ffffff !important;
+  background-image: none !important;
+  -webkit-text-fill-color: #ffffff !important;
+  text-fill-color: #ffffff !important;
 }
 
 /* Scrubber interactivo personalizado */

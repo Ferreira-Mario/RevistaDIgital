@@ -2304,13 +2304,22 @@ async function renderResults(sectionId) {
     });
   }
 }
+
 const DRIVE_ONLY = true;
 const USE_REALTIME = true;
-  async function renderMagazine() {
-    const viewport = document.getElementById('magazineViewport');
-    const book = document.getElementById('magazineBook');
+
+async function renderMagazine() {
+  const viewport = document.getElementById('magazineViewport');
+  const book = document.getElementById('magazineBook');
     const pageWrap = document.getElementById('magazinePage');
     const img = document.getElementById('magazineImage');
+    
+    // Selectores para pliegos dobles y lomo central
+    const centeredWrapper = document.getElementById('magazineCenteredWrapper');
+    const spreadWrapper = document.getElementById('magazineSpreadWrapper');
+    const spreadLeftImg = document.getElementById('magazineSpreadLeftImage');
+    const spreadRightImg = document.getElementById('magazineSpreadRightImage');
+    const spineShadow = document.getElementById('magazineSpineShadow');
     
     // Controles flotantes y de superposición
     const prevOverlay = document.getElementById('magPrevOverlay');
@@ -2390,28 +2399,57 @@ const USE_REALTIME = true;
     }
     if (scrubber) {
       scrubber.min = 0;
-      scrubber.max = pages.length - 1;
+      scrubber.max = Math.ceil((pages.length - 1) / 2);
       scrubber.value = 0;
     }
 
-    // Actualizar visualización de página
+    // Actualizar visualización de página (portada centrada o pliego doble)
     function update() {
-      const p = pages[idx];
-      if (!p) return;
-      
-      // Cargar imagen principal
-      img.src = p.url;
-      
-      // Restablecer zoom para evitar desalineaciones al cambiar de hoja
-      resetZoom();
+      if (idx === 0) {
+        // Mostrar portada única en el centro (libro cerrado)
+        if (centeredWrapper) centeredWrapper.classList.remove('hidden');
+        if (spreadWrapper) spreadWrapper.classList.add('hidden');
+        if (spineShadow) spineShadow.classList.add('hidden');
 
-      // Sincronizar indicadores de navegación
-      if (pageInput) pageInput.value = idx + 1;
-      if (scrubber) scrubber.value = idx;
+        const p = pages[0];
+        if (p && img) img.src = p.url;
+
+        if (pageInput) pageInput.value = 1;
+        if (scrubber) scrubber.value = 0;
+      } else {
+        // Mostrar pliego abierto de dos páginas lado a lado
+        if (centeredWrapper) centeredWrapper.classList.add('hidden');
+        if (spreadWrapper) spreadWrapper.classList.remove('hidden');
+        if (spineShadow) spineShadow.classList.remove('hidden');
+
+        // Página izquierda (índice idx)
+        const leftPageObj = pages[idx];
+        if (leftPageObj && spreadLeftImg) {
+          spreadLeftImg.src = leftPageObj.url;
+          spreadLeftImg.style.visibility = 'visible';
+        } else if (spreadLeftImg) {
+          spreadLeftImg.src = '';
+          spreadLeftImg.style.visibility = 'hidden';
+        }
+
+        // Página derecha (índice idx + 1)
+        const rightPageObj = pages[idx + 1];
+        if (rightPageObj && spreadRightImg) {
+          spreadRightImg.src = rightPageObj.url;
+          spreadRightImg.style.visibility = 'visible';
+        } else if (spreadRightImg) {
+          spreadRightImg.src = '';
+          spreadRightImg.style.visibility = 'hidden';
+        }
+
+        if (pageInput) pageInput.value = idx + 1;
+        if (scrubber) scrubber.value = Math.ceil(idx / 2);
+      }
+
+      resetZoom();
     }
 
-    // Animación 3D realista de Pase de Página (Page-Turn)
-    // Animación 3D realista de Pase de Página (Page-Turn) de doble cara
+    // Animación 3D realista de Pase de Página (Page-Turn) de doble cara física
     function flip(to) {
       if (to === idx || isFlipping || !pages[to]) return;
       isFlipping = true;
@@ -2420,52 +2458,62 @@ const USE_REALTIME = true;
 
       if (!flipPage || !flipImgFront || !flipImgBack || !leftPage || !rightPage || !leftImg || !rightImg) {
         // Fallback de transición suave si fallan los elementos 3D
-        img.style.opacity = '0.3';
-        img.style.transition = 'opacity 200ms ease';
+        if (pageWrap) {
+          pageWrap.style.opacity = '0.3';
+          pageWrap.style.transition = 'opacity 200ms ease';
+        }
         setTimeout(() => {
           idx = to;
           update();
-          img.style.opacity = '1';
+          if (pageWrap) pageWrap.style.opacity = '1';
           isFlipping = false;
         }, 200);
         return;
       }
 
-      // 1. Preparar las hojas temporales de fondo durante la animación
+      // 1. Preparar las hojas temporales de fondo y la hoja que vuela durante la animación
       if (direction === 'next') {
-        // Hoja izquierda muestra la página actual (se mantiene fija a la izquierda)
-        leftImg.src = pages[idx].url;
-        leftImg.style.left = '0';
-        leftImg.style.right = 'auto';
-        leftImg.style.width = '200%';
-        leftPage.classList.remove('hidden');
+        // Página izquierda estática permanece visible durante el giro (si idx=0 no hay y se oculta)
+        if (idx === 0) {
+          leftPage.classList.add('hidden');
+        } else {
+          leftImg.src = pages[idx].url;
+          leftPage.classList.remove('hidden');
+        }
 
-        // Hoja derecha muestra la página destino (ya está lista a la derecha como fondo)
-        rightImg.src = pages[to].url;
-        rightImg.style.left = 'auto';
-        rightImg.style.right = '0';
-        rightImg.style.width = '200%';
-        rightPage.classList.remove('hidden');
+        // Página derecha estática que se descubre al reverso del giro
+        const rightPageObj = pages[to + 1];
+        if (rightPageObj) {
+          rightImg.src = rightPageObj.url;
+          rightImg.style.visibility = 'visible';
+          rightPage.classList.remove('hidden');
+        } else {
+          rightImg.src = '';
+          rightImg.style.visibility = 'hidden';
+          rightPage.classList.remove('hidden');
+        }
 
-        // 2. Configurar la hoja que gira (Derecha a Izquierda)
+        // Configurar la hoja que gira (de Derecha a Izquierda)
         flipPage.style.left = '50%';
         flipPage.style.width = '50%';
         flipPage.style.transformOrigin = 'left center';
 
-        // Frente (muestra página actual, lado derecho)
-        flipImgFront.src = pages[idx].url;
-        flipImgFront.style.left = 'auto';
-        flipImgFront.style.right = '0';
-        flipImgFront.style.width = '200%';
+        // Frente (muestra página actual derecha)
+        const frontPageObj = idx === 0 ? pages[0] : pages[idx + 1];
+        if (frontPageObj) {
+          flipImgFront.src = frontPageObj.url;
+          flipImgFront.className = "w-full h-full object-contain object-left pointer-events-none select-none";
+        }
 
-        // Reverso (muestra página destino, lado izquierdo)
-        flipImgBack.src = pages[to].url;
-        flipImgBack.style.left = '0';
-        flipImgBack.style.right = 'auto';
-        flipImgBack.style.width = '200%';
+        // Reverso (muestra página de destino izquierda)
+        const backPageObj = pages[to];
+        if (backPageObj) {
+          flipImgBack.src = backPageObj.url;
+          flipImgBack.className = "w-full h-full object-contain object-right pointer-events-none select-none";
+        }
 
-        // Ocultar imagen estática principal para ver las piezas
-        img.style.opacity = '0';
+        // Ocultar el pliego principal estático
+        pageWrap.style.opacity = '0';
 
         // Mostrar hoja de volteo
         flipPage.classList.remove('hidden');
@@ -2480,50 +2528,58 @@ const USE_REALTIME = true;
         if (flipShineFront && flipShineBack) {
           flipShineFront.animate([
             { opacity: 0 },
-            { opacity: 0.6, offset: 0.5 },
+            { opacity: 0.5, offset: 0.5 },
             { opacity: 0 }
           ], { duration: 580 });
           flipShineBack.animate([
             { opacity: 0 },
-            { opacity: 0.6, offset: 0.5 },
+            { opacity: 0.5, offset: 0.5 },
             { opacity: 0 }
           ], { duration: 580 });
         }
 
       } else {
-        // Hoja izquierda muestra la página destino (lista a la izquierda de fondo)
-        leftImg.src = pages[to].url;
-        leftImg.style.left = '0';
-        leftImg.style.right = 'auto';
-        leftImg.style.width = '200%';
-        leftPage.classList.remove('hidden');
+        // Página izquierda estática (se descubre de fondo al levantar la hoja izquierda)
+        if (to === 0) {
+          leftPage.classList.add('hidden');
+        } else {
+          leftImg.src = pages[to].url;
+          leftPage.classList.remove('hidden');
+        }
 
-        // Hoja derecha muestra la página actual (se mantiene fija a la derecha)
-        rightImg.src = pages[idx].url;
-        rightImg.style.left = 'auto';
-        rightImg.style.right = '0';
-        rightImg.style.width = '200%';
-        rightPage.classList.remove('hidden');
+        // Página derecha estática permanece visible durante el giro
+        const rightPageObj = pages[idx + 1];
+        if (rightPageObj) {
+          rightImg.src = rightPageObj.url;
+          rightImg.style.visibility = 'visible';
+          rightPage.classList.remove('hidden');
+        } else {
+          rightImg.src = '';
+          rightImg.style.visibility = 'hidden';
+          rightPage.classList.remove('hidden');
+        }
 
-        // 2. Configurar la hoja que gira (Izquierda a Derecha)
+        // Configurar la hoja que gira (de Izquierda a Derecha)
         flipPage.style.left = '0';
         flipPage.style.width = '50%';
         flipPage.style.transformOrigin = 'right center';
 
-        // Frente (muestra página destino, lado derecho)
-        flipImgFront.src = pages[to].url;
-        flipImgFront.style.left = 'auto';
-        flipImgFront.style.right = '0';
-        flipImgFront.style.width = '200%';
+        // Frente (muestra página actual izquierda que se levanta)
+        const frontPageObj = pages[idx];
+        if (frontPageObj) {
+          flipImgFront.src = frontPageObj.url;
+          flipImgFront.className = "w-full h-full object-contain object-right pointer-events-none select-none";
+        }
 
-        // Reverso (muestra página actual, lado izquierdo)
-        flipImgBack.src = pages[idx].url;
-        flipImgBack.style.left = '0';
-        flipImgBack.style.right = 'auto';
-        flipImgBack.style.width = '200%';
+        // Reverso (muestra página de destino derecha que aterriza)
+        const backPageObj = to === 0 ? pages[0] : pages[to + 1];
+        if (backPageObj) {
+          flipImgBack.src = backPageObj.url;
+          flipImgBack.className = "w-full h-full object-contain object-left pointer-events-none select-none";
+        }
 
-        // Ocultar imagen estática principal para ver las piezas
-        img.style.opacity = '0';
+        // Ocultar el pliego principal estático
+        pageWrap.style.opacity = '0';
 
         // Mostrar hoja de volteo
         flipPage.classList.remove('hidden');
@@ -2538,12 +2594,12 @@ const USE_REALTIME = true;
         if (flipShineFront && flipShineBack) {
           flipShineFront.animate([
             { opacity: 0 },
-            { opacity: 0.6, offset: 0.5 },
+            { opacity: 0.5, offset: 0.5 },
             { opacity: 0 }
           ], { duration: 580 });
           flipShineBack.animate([
             { opacity: 0 },
-            { opacity: 0.6, offset: 0.5 },
+            { opacity: 0.5, offset: 0.5 },
             { opacity: 0 }
           ], { duration: 580 });
         }
@@ -2553,7 +2609,7 @@ const USE_REALTIME = true;
       setTimeout(() => {
         idx = to;
         update();
-        img.style.opacity = '1';
+        pageWrap.style.opacity = '1';
         flipPage.classList.add('hidden');
         leftPage.classList.add('hidden');
         rightPage.classList.add('hidden');
@@ -2561,9 +2617,15 @@ const USE_REALTIME = true;
       }, 565);
     }
 
-    // Funciones de navegación básica
-    const goPrev = () => { if (idx > 0) flip(idx - 1); };
-    const goNext = () => { if (idx < pages.length - 1) flip(idx + 1); };
+    // Funciones de navegación básica de pliegos
+    const goPrev = () => {
+      let prevIdx = idx === 1 ? 0 : idx - 2;
+      if (prevIdx >= 0) flip(prevIdx);
+    };
+    const goNext = () => {
+      let nextIdx = idx === 0 ? 1 : idx + 2;
+      if (nextIdx < pages.length) flip(nextIdx);
+    };
 
     // Asignar controladores de clics e interactores
     if (prevBtn) prevBtn.onclick = goPrev;
@@ -2571,38 +2633,44 @@ const USE_REALTIME = true;
     if (prevOverlay) prevOverlay.onclick = goPrev;
     if (nextOverlay) nextOverlay.onclick = goNext;
 
-    // Control deslizante interactivo (Scrubber)
+    // Control deslizante interactivo (Scrubber por pliegos)
     if (scrubber) {
       scrubber.oninput = (e) => {
         const val = parseInt(e.target.value, 10);
-        if (val !== idx) flip(val);
+        let targetIdx = val === 0 ? 0 : 2 * val - 1;
+        if (targetIdx !== idx && targetIdx < pages.length) flip(targetIdx);
       };
     }
 
-    // Caja de número de página directo
+    // Caja de número de página directo (redirección a pliego inteligente)
     if (pageInput) {
       pageInput.onchange = (e) => {
         let val = parseInt(e.target.value, 10);
         if (isNaN(val) || val < 1) val = 1;
         if (val > pages.length) val = pages.length;
         e.target.value = val;
-        flip(val - 1);
+        
+        let targetIdx = val <= 1 ? 0 : Math.floor(val / 2) * 2 - 1;
+        if (targetIdx < pages.length) flip(targetIdx);
       };
     }
 
-    // Lógica de Zoom Premium (con scroll manual en contenedor ampliado)
+    // Lógica de Zoom Premium (con scroll manual en contenedor de pliego completo)
     function applyZoom() {
-      img.style.transform = `scale(${zoomScale})`;
+      if (pageWrap) {
+        pageWrap.style.transform = `scale(${zoomScale})`;
+        pageWrap.style.transformOrigin = 'center center';
+      }
       if (zoomVal) zoomVal.textContent = `${Math.round(zoomScale * 100)}%`;
       
       if (zoomScale > 1.0) {
-        pageWrap.style.overflow = 'auto';
-        img.classList.remove('pointer-events-none');
+        viewport.style.overflow = 'auto';
+        if (pageWrap) pageWrap.classList.remove('pointer-events-none');
       } else {
-        pageWrap.style.overflow = 'hidden';
-        pageWrap.scrollLeft = 0;
-        pageWrap.scrollTop = 0;
-        img.classList.add('pointer-events-none');
+        viewport.style.overflow = 'hidden';
+        viewport.scrollLeft = 0;
+        viewport.scrollTop = 0;
+        if (pageWrap) pageWrap.classList.add('pointer-events-none');
       }
     }
 
@@ -2690,7 +2758,6 @@ const USE_REALTIME = true;
 
     // Navegación por teclado
     const handleKeyDown = (e) => {
-      // Ignorar atajos si el usuario escribe en un input
       if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
       
       const isVisible = !document.getElementById('view-magazine').classList.contains('hidden');
@@ -2709,12 +2776,12 @@ const USE_REALTIME = true;
     };
     window.addEventListener('keydown', handleKeyDown);
 
-    // Control táctil (deslizar/swipe en móviles)
+    // Control táctil (swipe)
     let touchStartX = 0;
     let touchStartY = 0;
     
     const handleTouchStart = (e) => {
-      if (zoomScale > 1.0) return; // Permitir arrastre natural en zoom
+      if (zoomScale > 1.0) return;
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
     };
