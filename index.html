@@ -236,6 +236,14 @@ A través del ABP, transformamos nuestras habilidades en un proyecto real: una r
                 <div id="magazineSpineShadow" class="magazine-spine-shadow pointer-events-none hidden"></div>
               </div>
 
+              <!-- Capa de Pase de Página 3D para Hoja Única (Gira sobre su borde lateral) -->
+              <div id="magazineSingleFlip" class="absolute inset-0 z-20 hidden transform-gpu select-none overflow-hidden rounded bg-white shadow-2xl border border-neutral-300/40" style="transform-style: preserve-3d;">
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <img id="magazineSingleFlipImage" alt="Pase de página única" class="max-h-full max-w-full object-contain pointer-events-none select-none" />
+                </div>
+                <div id="magazineSingleFlipShine" class="absolute inset-0 bg-gradient-to-r from-black/20 via-white/10 to-transparent pointer-events-none opacity-0"></div>
+              </div>
+
               <!-- Hoja Izquierda Estática Temporaria (Solo visible durante la transición) -->
               <div id="magazineLeftPage" class="absolute inset-y-0 left-0 w-[calc(50%-6px)] z-15 hidden overflow-hidden bg-white shadow-2xl rounded-l border border-neutral-300/40 select-none">
                 <img id="magazineLeftImage" alt="Página izquierda" class="w-full h-full object-contain object-right pointer-events-none select-none" />
@@ -289,7 +297,7 @@ A través del ABP, transformamos nuestras habilidades en un proyecto real: una r
             <!-- Indicadores de Zoom y Página Activa -->
             <div class="w-full md:w-auto flex flex-wrap items-center justify-between md:justify-end gap-4 border-t md:border-t-0 pt-3 md:pt-0">
               <!-- Modos de Visualización -->
-              <div class="flex items-center gap-1 bg-gray-50 border rounded-xl p-1">
+              <div id="magViewModeContainer" class="hidden md:flex items-center gap-1 bg-gray-50 border rounded-xl p-1">
                 <button id="magViewModeBook" class="mag-view-btn mag-view-btn-active" title="Modo Libro (Doble Página)">
                   📖 Libro
                 </button>

@@ -2349,6 +2349,10 @@ async function renderMagazine() {
     const flipShineFront = document.getElementById('magazineFlipShineFront');
     const flipShineBack = document.getElementById('magazineFlipShineBack');
 
+    const singleFlip = document.getElementById('magazineSingleFlip');
+    const singleFlipImg = document.getElementById('magazineSingleFlipImage');
+    const singleFlipShine = document.getElementById('magazineSingleFlipShine');
+
     const leftPage = document.getElementById('magazineLeftPage');
     const leftImg = document.getElementById('magazineLeftImage');
     const rightPage = document.getElementById('magazineRightPage');
@@ -2392,6 +2396,9 @@ async function renderMagazine() {
     const viewModeBookBtn = document.getElementById('magViewModeBook');
     const viewModeSingleBtn = document.getElementById('magViewModeSingle');
     let viewMode = 'book'; // 'book' o 'single'
+    if (window.innerWidth < 768) {
+      viewMode = 'single';
+    }
 
     let idx = 0; // Si es 'book', es spreadIndex. Si es 'single', es pageIndex.
     let isFlipping = false;
@@ -2404,6 +2411,12 @@ async function renderMagazine() {
     if (pageInput) {
       pageInput.value = 1;
       pageInput.max = pages.length;
+    }
+    
+    // Forzar consistencia de estilos si iniciamos en Modo Página Única
+    if (viewMode === 'single') {
+      if (viewModeBookBtn) viewModeBookBtn.classList.remove('mag-view-btn-active');
+      if (viewModeSingleBtn) viewModeSingleBtn.classList.add('mag-view-btn-active');
     }
 
     function updateScrubberLimits() {
@@ -2719,7 +2732,7 @@ async function renderMagazine() {
       }
     }
 
-    // Animación de deslizamiento y fade para Modo Página Única
+    // Animación premium en 3D de pase de hoja para Modo Página Única
     function flipSingle(to) {
       if (to === idx || isFlipping || !pages || to < 0 || to >= pages.length) return;
       isFlipping = true;
@@ -2727,33 +2740,72 @@ async function renderMagazine() {
       const direction = to > idx ? 'next' : 'prev';
 
       try {
-        if (img && img.animate) {
-          img.animate([
-            { opacity: 1, transform: 'translateX(0) scale(1)' },
-            { opacity: 0, transform: `translateX(${direction === 'next' ? '-50px' : '50px'}) scale(0.95)` }
-          ], { duration: 180, easing: 'ease-in-out' }).onfinish = () => {
-            try {
-              idx = to;
-              update();
-              img.animate([
-                { opacity: 0, transform: `translateX(${direction === 'next' ? '50px' : '-50px'}) scale(0.95)` },
-                { opacity: 1, transform: 'translateX(0) scale(1)' }
-              ], { duration: 180, easing: 'ease-out' });
-            } catch (errInner) {
-              console.error("Error interno en animación de pase de página única:", errInner);
-            } finally {
-              isFlipping = false;
+        if (singleFlip && singleFlipImg) {
+          // 1. Cargar la página actual (origen) en la capa de volteo temporal
+          const origPage = pages[idx];
+          if (origPage) {
+            singleFlipImg.src = origPage.url;
+          } else {
+            singleFlipImg.src = '';
+          }
+
+          // 2. Definir el eje de rotación (transform-origin) según la dirección
+          if (direction === 'next') {
+            singleFlip.style.transformOrigin = 'left center';
+            singleFlip.style.webkitTransformOrigin = 'left center';
+          } else {
+            singleFlip.style.transformOrigin = 'right center';
+            singleFlip.style.webkitTransformOrigin = 'right center';
+          }
+
+          // Limpiar clases de animación previas por si acaso
+          singleFlip.classList.remove('animate-single-flip-next', 'animate-single-flip-prev', 'hidden');
+          if (singleFlipShine) {
+            singleFlipShine.classList.remove('animate-shine-single', 'opacity-0');
+          }
+
+          // 3. Forzar reflujo para disparar la animación 3D
+          void singleFlip.offsetWidth;
+
+          // 4. Cambiar el índice de fondo de inmediato y actualizar la página detrás
+          idx = to;
+          update();
+
+          // 5. Iniciar animación 3D de la capa superior
+          if (direction === 'next') {
+            singleFlip.classList.add('animate-single-flip-next');
+          } else {
+            singleFlip.classList.add('animate-single-flip-prev');
+          }
+
+          if (singleFlipShine) {
+            singleFlipShine.classList.add('animate-shine-single');
+          }
+
+          // 6. Limpieza al finalizar la transición (450ms de duración)
+          setTimeout(() => {
+            singleFlip.classList.add('hidden');
+            singleFlip.classList.remove('animate-single-flip-next', 'animate-single-flip-prev');
+            if (singleFlipShine) {
+              singleFlipShine.classList.remove('animate-shine-single');
+              singleFlipShine.classList.add('opacity-0');
             }
-          };
+            isFlipping = false;
+          }, 450);
+
         } else {
           idx = to;
           update();
           isFlipping = false;
         }
       } catch (err) {
-        console.error("Error durante la animación de pase de página única:", err);
+        console.error("Error durante la animación 3D de página única:", err);
         idx = to;
         update();
+        if (singleFlip) {
+          singleFlip.classList.add('hidden');
+          singleFlip.classList.remove('animate-single-flip-next', 'animate-single-flip-prev');
+        }
         isFlipping = false;
       }
     }
