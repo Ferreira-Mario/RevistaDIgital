@@ -2353,6 +2353,7 @@ async function renderMagazine() {
     const leftImg = document.getElementById('magazineLeftImage');
     const rightPage = document.getElementById('magazineRightPage');
     const rightImg = document.getElementById('magazineRightImage');
+    const magazineSpine = document.getElementById('magazineSpine');
 
     if (!viewport || !pageWrap || !img) return;
     
@@ -2418,6 +2419,51 @@ async function renderMagazine() {
       }
     }
 
+    const preloadedImages = new Map();
+    function preloadImage(url) {
+      if (!url || preloadedImages.has(url)) return;
+      const imgObj = new Image();
+      imgObj.src = url;
+      preloadedImages.set(url, imgObj);
+    }
+
+    function preloadAdjacentSpreads() {
+      if (!pages || !pages.length) return;
+      if (viewMode === 'book') {
+        const nextIdx = idx + 1;
+        if (nextIdx < numSpreads) {
+          if (nextIdx === 0) {
+            if (pages[0]) preloadImage(pages[0].url);
+          } else {
+            const lp = pages[2 * nextIdx - 1];
+            const rp = pages[2 * nextIdx];
+            if (lp) preloadImage(lp.url);
+            if (rp) preloadImage(rp.url);
+          }
+        }
+        const prevIdx = idx - 1;
+        if (prevIdx >= 0) {
+          if (prevIdx === 0) {
+            if (pages[0]) preloadImage(pages[0].url);
+          } else {
+            const lp = pages[2 * prevIdx - 1];
+            const rp = pages[2 * prevIdx];
+            if (lp) preloadImage(lp.url);
+            if (rp) preloadImage(rp.url);
+          }
+        }
+      } else {
+        const nextIdx = idx + 1;
+        if (nextIdx < pages.length) {
+          preloadImage(pages[nextIdx].url);
+        }
+        const prevIdx = idx - 1;
+        if (prevIdx >= 0) {
+          preloadImage(pages[prevIdx].url);
+        }
+      }
+    }
+
     // Actualizar visualización de página
     function update() {
       if (viewMode === 'book') {
@@ -2476,7 +2522,16 @@ async function renderMagazine() {
         if (scrubber) scrubber.value = idx;
       }
 
+      if (magazineSpine) {
+        if (viewMode === 'book' && idx > 0) {
+          magazineSpine.classList.remove('hidden');
+        } else {
+          magazineSpine.classList.add('hidden');
+        }
+      }
+
       resetZoom();
+      preloadAdjacentSpreads();
     }
 
     // Animación 3D realista de Pase de Página (Page-Turn) de doble cara física para Modo Libro
@@ -2531,8 +2586,9 @@ async function renderMagazine() {
             rightPage.classList.remove('hidden');
           }
 
-          flipPage.style.left = '50%';
-          flipPage.style.width = '50%';
+          // Ajustado al borde derecho del lomo central (50% + 6px)
+          flipPage.style.left = 'calc(50% + 6px)';
+          flipPage.style.width = 'calc(50% - 6px)';
           flipPage.style.transformOrigin = 'left center';
 
           const frontPageObj = idx === 0 ? pages[0] : pages[2 * idx];
@@ -2551,7 +2607,10 @@ async function renderMagazine() {
             flipImgBack.src = '';
           }
 
-          pageWrap.style.opacity = '0';
+          if (pageWrap) {
+            pageWrap.style.transition = 'none';
+            pageWrap.style.opacity = '0';
+          }
           flipPage.classList.remove('hidden');
 
           // Forzar reflujo del navegador para garantizar que se dispare la animación 3D
@@ -2587,8 +2646,9 @@ async function renderMagazine() {
             rightPage.classList.remove('hidden');
           }
 
+          // Ajustado al borde izquierdo del visor (0) con ancho reducido por el lomo (50% - 6px)
           flipPage.style.left = '0';
-          flipPage.style.width = '50%';
+          flipPage.style.width = 'calc(50% - 6px)';
           flipPage.style.transformOrigin = 'right center';
 
           const frontPageObj = pages[2 * idx - 1];
@@ -2607,7 +2667,10 @@ async function renderMagazine() {
             flipImgBack.src = '';
           }
 
-          pageWrap.style.opacity = '0';
+          if (pageWrap) {
+            pageWrap.style.transition = 'none';
+            pageWrap.style.opacity = '0';
+          }
           flipPage.classList.remove('hidden');
 
           // Forzar reflujo del navegador para garantizar que se dispare la animación 3D
@@ -2622,7 +2685,10 @@ async function renderMagazine() {
         setTimeout(() => {
           idx = to;
           update();
-          pageWrap.style.opacity = '1';
+          if (pageWrap) {
+            pageWrap.style.transition = 'opacity 150ms ease';
+            pageWrap.style.opacity = '1';
+          }
           flipPage.classList.add('hidden');
           leftPage.classList.add('hidden');
           rightPage.classList.add('hidden');
@@ -2632,14 +2698,17 @@ async function renderMagazine() {
           if (flipShineBack) flipShineBack.classList.remove('animate-shine-back');
           
           isFlipping = false;
-        }, 570);
+        }, 580);
 
       } catch (err) {
         console.error("Error durante la animación 3D del pase de página:", err);
         // Fallback inmediato y seguro para evitar bloqueos
         idx = to;
         update();
-        if (pageWrap) pageWrap.style.opacity = '1';
+        if (pageWrap) {
+          pageWrap.style.transition = 'opacity 150ms ease';
+          pageWrap.style.opacity = '1';
+        }
         if (flipPage) {
           flipPage.classList.add('hidden');
           flipPage.classList.remove('animate-flip-next', 'animate-flip-prev');

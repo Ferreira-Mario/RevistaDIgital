@@ -218,14 +218,15 @@ A través del ABP, transformamos nuestras habilidades en un proyecto real: una r
                 </div>
                 
                 <!-- Pliego de Páginas Lado a Lado -->
-                <div id="magazineSpreadWrapper" class="absolute inset-0 hidden flex">
-                  <!-- Página Izquierda -->
-                  <div id="magazineSpreadLeft" class="w-1/2 h-full relative overflow-hidden">
+                <div id="magazineSpreadWrapper" class="absolute inset-0 hidden flex justify-between">
+                  <!-- Página Izquierda (Reducida en 6px de ancho) -->
+                  <div id="magazineSpreadLeft" class="w-[calc(50%-6px)] h-full relative overflow-hidden">
                     <img id="magazineSpreadLeftImage" alt="Página izquierda" class="w-full h-full object-contain object-right pointer-events-none select-none" />
                     <div class="absolute inset-y-0 left-0 w-[8%] bg-gradient-to-r from-black/10 to-transparent pointer-events-none"></div>
                   </div>
-                  <!-- Página Derecha -->
-                  <div id="magazineSpreadRight" class="w-1/2 h-full relative overflow-hidden">
+
+                  <!-- Página Derecha (Reducida en 6px de ancho) -->
+                  <div id="magazineSpreadRight" class="w-[calc(50%-6px)] h-full relative overflow-hidden">
                     <img id="magazineSpreadRightImage" alt="Página derecha" class="w-full h-full object-contain object-left pointer-events-none select-none" />
                     <div class="absolute inset-y-0 right-0 w-[8%] bg-gradient-to-l from-black/10 to-transparent pointer-events-none"></div>
                   </div>
@@ -236,14 +237,14 @@ A través del ABP, transformamos nuestras habilidades en un proyecto real: una r
               </div>
 
               <!-- Hoja Izquierda Estática Temporaria (Solo visible durante la transición) -->
-              <div id="magazineLeftPage" class="absolute inset-y-0 left-0 w-1/2 z-15 hidden overflow-hidden bg-white shadow-2xl rounded-l border border-neutral-300/40 select-none">
+              <div id="magazineLeftPage" class="absolute inset-y-0 left-0 w-[calc(50%-6px)] z-15 hidden overflow-hidden bg-white shadow-2xl rounded-l border border-neutral-300/40 select-none">
                 <img id="magazineLeftImage" alt="Página izquierda" class="w-full h-full object-contain object-right pointer-events-none select-none" />
                 <div class="absolute inset-y-0 left-0 w-[8%] bg-gradient-to-r from-black/15 to-transparent pointer-events-none"></div>
                 <div class="absolute inset-y-0 right-0 w-[6%] bg-gradient-to-l from-black/10 via-transparent to-transparent pointer-events-none"></div>
               </div>
 
               <!-- Hoja Derecha Estática Temporaria (Solo visible durante la transición) -->
-              <div id="magazineRightPage" class="absolute inset-y-0 right-0 w-1/2 z-15 hidden overflow-hidden bg-white shadow-2xl rounded-r border border-neutral-300/40 select-none">
+              <div id="magazineRightPage" class="absolute inset-y-0 right-0 w-[calc(50%-6px)] z-15 hidden overflow-hidden bg-white shadow-2xl rounded-r border border-neutral-300/40 select-none">
                 <img id="magazineRightImage" alt="Página derecha" class="w-full h-full object-contain object-left pointer-events-none select-none" />
                 <div class="absolute inset-y-0 right-0 w-[8%] bg-gradient-to-l from-black/15 to-transparent pointer-events-none"></div>
                 <div class="absolute inset-y-0 left-0 w-[6%] bg-gradient-to-r from-black/10 via-transparent to-transparent pointer-events-none"></div>
@@ -262,6 +263,9 @@ A través del ABP, transformamos nuestras habilidades en un proyecto real: una r
                   <div id="magazineFlipShineBack" class="magazine-page-shine bg-gradient-to-l from-black/30 via-white/10 to-transparent"></div>
                 </div>
               </div>
+
+              <!-- Lomo físico permanente central (por encima de todo) -->
+              <div id="magazineSpine" class="absolute inset-y-0 left-[calc(50%-6px)] w-[12px] h-full bg-gradient-to-r from-neutral-300 via-neutral-100 to-neutral-300 border-x border-black/10 shadow-[inset_0_0_6px_rgba(0,0,0,0.15)] pointer-events-none z-25 hidden"></div>
 
             </div>
           </div>
