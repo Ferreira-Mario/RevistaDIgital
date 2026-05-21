@@ -2308,12 +2308,38 @@ const DRIVE_ONLY = true;
 const USE_REALTIME = true;
   async function renderMagazine() {
     const viewport = document.getElementById('magazineViewport');
+    const book = document.getElementById('magazineBook');
     const pageWrap = document.getElementById('magazinePage');
     const img = document.getElementById('magazineImage');
-    const prev = document.getElementById('magPrev');
-    const next = document.getElementById('magNext');
-    const status = document.getElementById('magazineStatus');
-    if (!viewport || !pageWrap || !img || !prev || !next) return;
+    
+    // Controles flotantes y de superposición
+    const prevOverlay = document.getElementById('magPrevOverlay');
+    const nextOverlay = document.getElementById('magNextOverlay');
+    
+    // Controles de barra inferior
+    const prevBtn = document.getElementById('magPrevBtn');
+    const nextBtn = document.getElementById('magNextBtn');
+    const scrubber = document.getElementById('magScrubber');
+    
+    // Controles de Zoom
+    const zoomIn = document.getElementById('magZoomIn');
+    const zoomOut = document.getElementById('magZoomOut');
+    const zoomReset = document.getElementById('magZoomReset');
+    const zoomVal = document.getElementById('magZoomVal');
+    
+    // Controles de página directa e inmersión
+    const pageInput = document.getElementById('magPageInput');
+    const totalPagesText = document.getElementById('magTotalPages');
+    const fsToggle = document.getElementById('magFullscreenToggle');
+    const card = document.getElementById('magazineCard');
+    
+    // Elementos de animación 3D
+    const flipPage = document.getElementById('magazineFlipPage');
+    const flipImg = document.getElementById('magazineFlipImage');
+    const flipShine = document.getElementById('magazineFlipShine');
+
+    if (!viewport || !pageWrap || !img) return;
+    
     const folderId = String(window.magazineFolderId || '').trim();
     let files = [];
     if (folderId) {
@@ -2324,9 +2350,9 @@ const USE_REALTIME = true;
       if (sub) files = await listDriveFolderFiles(sub);
     }
     files = Array.isArray(files) ? files : [];
-    const pages = files.map(f => ({ id: f.id, name: f.name, url: resolveDriveUrl(f.id, 'w2000') }));
     
-    // Ordenar páginas numéricamente por su nombre de archivo (ej. "1.png", "2.png", "10.png")
+    // Cargar y ordenar páginas numéricamente
+    const pages = files.map(f => ({ id: f.id, name: f.name, url: resolveDriveUrl(f.id, 'w2000') }));
     const getNum = (name) => {
       const m = String(name || '').match(/^(\d+)/);
       return m ? parseInt(m[1], 10) : Infinity;
@@ -2338,24 +2364,313 @@ const USE_REALTIME = true;
       return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
     });
 
+    if (!pages.length) {
+      img.removeAttribute('src');
+      if (totalPagesText) totalPagesText.textContent = '0';
+      if (pageInput) pageInput.value = '0';
+      return;
+    }
+
     let idx = 0;
+    let isFlipping = false;
+    let zoomScale = 1.0;
+
+    // Inicializar controles de UI
+    if (totalPagesText) totalPagesText.textContent = pages.length;
+    if (pageInput) {
+      pageInput.value = 1;
+      pageInput.max = pages.length;
+    }
+    if (scrubber) {
+      scrubber.min = 0;
+      scrubber.max = pages.length - 1;
+      scrubber.value = 0;
+    }
+
+    // Actualizar visualización de página
     function update() {
       const p = pages[idx];
-      if (!p) { img.removeAttribute('src'); if (status) status.textContent = 'Sin páginas'; return; }
-      img.style.transform = 'rotateY(0deg)';
-      img.style.transition = 'transform 400ms ease';
+      if (!p) return;
+      
+      // Cargar imagen principal
       img.src = p.url;
-      if (status) status.textContent = `${idx+1} / ${pages.length}`;
+      
+      // Restablecer zoom para evitar desalineaciones al cambiar de hoja
+      resetZoom();
+
+      // Sincronizar indicadores de navegación
+      if (pageInput) pageInput.value = idx + 1;
+      if (scrubber) scrubber.value = idx;
     }
+
+    // Animación 3D realista de Pase de Página (Page-Turn)
     function flip(to) {
-      if (!pages.length) return;
-      img.style.transform = 'rotateY(-60deg)';
-      img.style.transition = 'transform 300ms ease';
-      setTimeout(() => { idx = to; update(); }, 180);
+      if (to === idx || isFlipping || !pages[to]) return;
+      isFlipping = true;
+
+      const direction = to > idx ? 'next' : 'prev';
+
+      if (!flipPage || !flipImg || !flipShine) {
+        // Fallback de transición suave si fallan los elementos 3D
+        img.style.opacity = '0.3';
+        img.style.transition = 'opacity 200ms ease';
+        setTimeout(() => {
+          idx = to;
+          update();
+          img.style.opacity = '1';
+          isFlipping = false;
+        }, 200);
+        return;
+      }
+
+      // Preparar texturas de transición
+      flipPage.classList.remove('hidden');
+      
+      if (direction === 'next') {
+        // Configurar pase de página hacia la izquierda
+        flipPage.style.transformOrigin = 'left center';
+        flipPage.style.left = '50%';
+        flipPage.style.right = '0';
+        flipPage.style.width = '50%';
+        flipImg.style.left = 'auto';
+        flipImg.style.right = '0';
+        flipImg.style.width = '200%';
+        flipImg.src = pages[idx].url; // Muestra la página actual que se está doblando
+
+        // Lanzar animación tridimensional de pase
+        flipPage.style.transform = 'rotateY(0deg)';
+        
+        // Sincronizar el cambio de imagen a mitad del giro
+        setTimeout(() => {
+          flipImg.src = pages[to].url; // Muestra el reverso (página destino)
+          flipImg.style.left = '0';
+          flipImg.style.right = 'auto';
+        }, 280);
+
+        flipPage.animate([
+          { transform: 'rotateY(0deg)', zIndex: 30 },
+          { transform: 'rotateY(-90deg)', zIndex: 30, offset: 0.5 },
+          { transform: 'rotateY(-180deg)', zIndex: 10 }
+        ], { duration: 580, easing: 'ease-in-out' });
+
+        flipShine.animate([
+          { opacity: 0 },
+          { opacity: 0.7, offset: 0.5 },
+          { opacity: 0 }
+        ], { duration: 580 });
+
+      } else {
+        // Configurar pase de página hacia la derecha (retroceder)
+        flipPage.style.transformOrigin = 'right center';
+        flipPage.style.left = '0';
+        flipPage.style.right = 'auto';
+        flipPage.style.width = '50%';
+        flipImg.style.left = '0';
+        flipImg.style.right = 'auto';
+        flipImg.style.width = '200%';
+        flipImg.src = pages[to].url; // Muestra la página destino que regresa
+
+        flipPage.style.transform = 'rotateY(-180deg)';
+
+        setTimeout(() => {
+          flipImg.src = pages[idx].url; // Muestra la página actual saliendo
+          flipImg.style.left = 'auto';
+          flipImg.style.right = '0';
+        }, 280);
+
+        flipPage.animate([
+          { transform: 'rotateY(-180deg)', zIndex: 10 },
+          { transform: 'rotateY(-90deg)', zIndex: 30, offset: 0.5 },
+          { transform: 'rotateY(0deg)', zIndex: 30 }
+        ], { duration: 580, easing: 'ease-in-out' });
+
+        flipShine.animate([
+          { opacity: 0 },
+          { opacity: 0.7, offset: 0.5 },
+          { opacity: 0 }
+        ], { duration: 580 });
+      }
+
+      // Finalizar animación y consolidar estado
+      setTimeout(() => {
+        idx = to;
+        update();
+        flipPage.classList.add('hidden');
+        isFlipping = false;
+      }, 560);
     }
-    prev.onclick = () => { const to = (idx - 1 + pages.length) % pages.length; flip(to); };
-    next.onclick = () => { const to = (idx + 1) % pages.length; flip(to); };
-    pageWrap.style.perspective = '1200px';
-    pageWrap.style.transformStyle = 'preserve-3d';
+
+    // Funciones de navegación básica
+    const goPrev = () => { if (idx > 0) flip(idx - 1); };
+    const goNext = () => { if (idx < pages.length - 1) flip(idx + 1); };
+
+    // Asignar controladores de clics e interactores
+    if (prevBtn) prevBtn.onclick = goPrev;
+    if (nextBtn) nextBtn.onclick = goNext;
+    if (prevOverlay) prevOverlay.onclick = goPrev;
+    if (nextOverlay) nextOverlay.onclick = goNext;
+
+    // Control deslizante interactivo (Scrubber)
+    if (scrubber) {
+      scrubber.oninput = (e) => {
+        const val = parseInt(e.target.value, 10);
+        if (val !== idx) flip(val);
+      };
+    }
+
+    // Caja de número de página directo
+    if (pageInput) {
+      pageInput.onchange = (e) => {
+        let val = parseInt(e.target.value, 10);
+        if (isNaN(val) || val < 1) val = 1;
+        if (val > pages.length) val = pages.length;
+        e.target.value = val;
+        flip(val - 1);
+      };
+    }
+
+    // Lógica de Zoom Premium (con scroll manual en contenedor ampliado)
+    function applyZoom() {
+      img.style.transform = `scale(${zoomScale})`;
+      if (zoomVal) zoomVal.textContent = `${Math.round(zoomScale * 100)}%`;
+      
+      if (zoomScale > 1.0) {
+        pageWrap.style.overflow = 'auto';
+        img.classList.remove('pointer-events-none');
+      } else {
+        pageWrap.style.overflow = 'hidden';
+        pageWrap.scrollLeft = 0;
+        pageWrap.scrollTop = 0;
+        img.classList.add('pointer-events-none');
+      }
+    }
+
+    function resetZoom() {
+      zoomScale = 1.0;
+      applyZoom();
+    }
+
+    if (zoomIn) {
+      zoomIn.onclick = () => {
+        if (zoomScale < 2.5) {
+          zoomScale = Math.min(2.5, zoomScale + 0.25);
+          applyZoom();
+        }
+      };
+    }
+    if (zoomOut) {
+      zoomOut.onclick = () => {
+        if (zoomScale > 1.0) {
+          zoomScale = Math.max(1.0, zoomScale - 0.25);
+          applyZoom();
+        }
+      };
+    }
+    if (zoomReset) {
+      zoomReset.onclick = resetZoom;
+    }
+
+    // Modo Pantalla Completa
+    function handleFullscreenChange() {
+      const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
+      if (card) {
+        if (isFS) {
+          card.classList.add('magazine-fullscreen-active');
+          if (fsToggle) {
+            fsToggle.innerHTML = `
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+              <span>Salir Pantalla</span>
+            `;
+          }
+        } else {
+          card.classList.remove('magazine-fullscreen-active');
+          if (fsToggle) {
+            fsToggle.innerHTML = `
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/>
+              </svg>
+              <span>Pantalla Completa</span>
+            `;
+          }
+        }
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!card) return;
+      
+      const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
+      if (!isFS) {
+        const req = card.requestFullscreen || card.webkitRequestFullscreen || card.mozRequestFullScreen;
+        if (req) {
+          req.call(card).catch(() => {
+            card.classList.toggle('magazine-fullscreen-active');
+          });
+        } else {
+          card.classList.toggle('magazine-fullscreen-active');
+        }
+      } else {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen;
+        if (exit) {
+          exit.call(document);
+        } else {
+          card.classList.remove('magazine-fullscreen-active');
+        }
+      }
+    }
+
+    if (fsToggle) fsToggle.onclick = toggleFullscreen;
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+
+    // Navegación por teclado
+    const handleKeyDown = (e) => {
+      // Ignorar atajos si el usuario escribe en un input
+      if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+      
+      const isVisible = !document.getElementById('view-magazine').classList.contains('hidden');
+      if (!isVisible) return;
+
+      if (e.key === 'ArrowLeft') {
+        goPrev();
+        e.preventDefault();
+      } else if (e.key === 'ArrowRight') {
+        goNext();
+        e.preventDefault();
+      } else if (e.key === 'f' || e.key === 'F') {
+        toggleFullscreen();
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    // Control táctil (deslizar/swipe en móviles)
+    let touchStartX = 0;
+    let touchStartY = 0;
+    
+    const handleTouchStart = (e) => {
+      if (zoomScale > 1.0) return; // Permitir arrastre natural en zoom
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    };
+
+    const handleTouchEnd = (e) => {
+      if (zoomScale > 1.0) return;
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      if (Math.abs(dx) > 60 && Math.abs(dy) < 80) {
+        if (dx < 0) goNext();
+        else goPrev();
+      }
+    };
+
+    viewport.addEventListener('touchstart', handleTouchStart, { passive: true });
+    viewport.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    // Cargar página inicial
     update();
   }
