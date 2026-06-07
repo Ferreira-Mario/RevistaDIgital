@@ -1,6 +1,8 @@
-/* Paleta y utilidades compartidas */
-.line-clamp-2 { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-.line-clamp-3 { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+/* --- DEFAULT (CLASSIC LIGHT) THEME STYLE --- */
+
+/* Scrollbar default */
 ::-webkit-scrollbar { width:8px; height:8px; }
 ::-webkit-scrollbar-thumb { background:#888; border-radius:4px; }
 ::-webkit-scrollbar-track { background:#f1f1f1; }
@@ -13,6 +15,7 @@
   --bg-soft:    #f8fafc;
   --text-strong:#0f172a;
 }
+
 html[data-theme="mono"] {
   --brand-blue: #111827;
   --brand-red:  #111827;
@@ -20,9 +23,22 @@ html[data-theme="mono"] {
   --bg-soft:    #ffffff;
   --text-strong:#111827;
 }
-.brand-title { background-image: linear-gradient(90deg, var(--brand-blue), var(--brand-red)); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
-.hero-surface { background: linear-gradient(90deg, var(--brand-white), var(--bg-soft)); }
-.text-brand { color: var(--brand-blue); }
+
+.brand-title { 
+  background-image: linear-gradient(90deg, var(--brand-blue), var(--brand-red)); 
+  -webkit-background-clip: text; 
+  background-clip: text; 
+  color: transparent; 
+  -webkit-text-fill-color: transparent; 
+}
+
+.hero-surface { 
+  background: linear-gradient(90deg, var(--brand-white), var(--bg-soft)); 
+}
+
+.text-brand { 
+  color: var(--brand-blue); 
+}
 
 .btn-primary,
 .btn-danger,
@@ -41,6 +57,326 @@ html[data-theme="mono"] {
 .btn-primary:focus, .btn-danger:focus, .btn-outline:focus { outline: 2px solid rgba(0,0,0,0.15); outline-offset: 2px; }
 .btn-primary:disabled, .btn-danger:disabled, .btn-outline:disabled { opacity: 0.6; cursor: not-allowed; }
 html[data-theme="mono"] img { filter: grayscale(100%); }
+
+
+/* --- APPLE VISION (GLASSMORPHISM DARK) THEME OVERRIDES --- */
+
+/* Reset and outfit font */
+html[data-theme="vision"] * {
+  font-family: 'Outfit', sans-serif !important;
+}
+
+html[data-theme="vision"] body {
+  background: radial-gradient(circle at 50% 50%, #151324 0%, #050409 100%) !important;
+  color: #f8fafc !important;
+}
+
+/* Scrollbar vision style */
+html[data-theme="vision"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+html[data-theme="vision"] ::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2) !important;
+}
+html[data-theme="vision"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Ambient glow orbs in the background */
+html[data-theme="vision"] body::before {
+  content: "";
+  position: fixed;
+  top: -10%;
+  left: -10%;
+  width: 60vw;
+  height: 60vw;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0) 70%);
+  filter: blur(80px);
+  z-index: -2;
+  pointer-events: none;
+  animation: pulseOrb1 20s infinite alternate ease-in-out;
+}
+
+html[data-theme="vision"] body::after {
+  content: "";
+  position: fixed;
+  bottom: -10%;
+  right: -10%;
+  width: 70vw;
+  height: 70vw;
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.12) 0%, rgba(236, 72, 153, 0) 70%);
+  filter: blur(90px);
+  z-index: -2;
+  pointer-events: none;
+  animation: pulseOrb2 25s infinite alternate ease-in-out;
+}
+
+/* Brand typography and colors for visionOS */
+html[data-theme="vision"] .brand-title {
+  background: linear-gradient(135deg, #c084fc 0%, #6366f1 50%, #38bdf8 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  text-shadow: 0 4px 12px rgba(99, 102, 241, 0.2) !important;
+}
+
+html[data-theme="vision"] .text-brand {
+  color: #c084fc !important;
+}
+
+/* Glassmorphism main panel definition */
+html[data-theme="vision"] .hero-surface, 
+html[data-theme="vision"] #viewerModal .bg-white, 
+html[data-theme="vision"] #infoPopup .bg-white, 
+html[data-theme="vision"] #voteLock .bg-white,
+html[data-theme="vision"] main section > div.bg-white {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  color: #f8fafc !important;
+  border-radius: 24px !important;
+}
+
+/* Floating navigation header */
+html[data-theme="vision"] header {
+  position: sticky !important;
+  top: 1rem !important;
+  margin: 1rem auto 1.5rem auto !important;
+  width: calc(100% - 2rem) !important;
+  max-width: 80rem !important;
+  border-radius: 9999px !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  z-index: 50 !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+html[data-theme="vision"] header:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Header buttons & items */
+html[data-theme="vision"] #menuBtn {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  border-radius: 9999px !important;
+  transition: all 0.2s ease !important;
+  padding: 0.5rem !important;
+}
+html[data-theme="vision"] #menuBtn:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  transform: scale(1.05) !important;
+}
+
+/* Glassmorphism Side Menu */
+html[data-theme="vision"] #sideMenu {
+  background: rgba(10, 10, 15, 0.75) !important;
+  backdrop-filter: blur(30px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 24px 0 0 24px !important;
+  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.5) !important;
+}
+html[data-theme="vision"] #sideMenu h2 {
+  color: #ffffff !important;
+}
+html[data-theme="vision"] #sideMenu a, html[data-theme="vision"] #sideMenu button {
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  margin-bottom: 0.5rem !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border-radius: 12px !important;
+}
+html[data-theme="vision"] #sideMenu a:hover, html[data-theme="vision"] #sideMenu button:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  transform: translateX(-4px) scale(1.02) !important;
+}
+html[data-theme="vision"] #closeMenuBtn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 9999px !important;
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+html[data-theme="vision"] #closeMenuBtn:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  transform: rotate(90deg) !important;
+}
+html[data-theme="vision"] #bocetosChevron, html[data-theme="vision"] #resultadosChevron {
+  color: #ffffff !important;
+}
+html[data-theme="vision"] #bocetosMenu a, html[data-theme="vision"] #resultadosMenu a {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.03) !important;
+}
+
+/* Card hover and scale effects */
+html[data-theme="vision"] article.group, html[data-theme="vision"] #carouselTrack > div {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
+  border-radius: 20px !important;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.4s !important;
+}
+html[data-theme="vision"] article.group:hover, html[data-theme="vision"] #carouselTrack > div:hover {
+  transform: translateY(-8px) scale(1.02) !important;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+html[data-theme="vision"] [data-role="header"] {
+  background: rgba(0, 0, 0, 0.25) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Dynamic slider and indicator colors */
+html[data-theme="vision"] [data-role="votes"] {
+  color: #c084fc !important;
+  text-shadow: 0 0 10px rgba(167, 139, 250, 0.4);
+}
+
+/* Results section overrides */
+html[data-theme="vision"] #resultsSectionSelect {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 9999px !important;
+  padding: 0.5rem 1.5rem !important;
+  outline: none !important;
+}
+html[data-theme="vision"] #resultsSectionSelect option {
+  background: #151324 !important;
+  color: #ffffff !important;
+}
+
+/* Admin / Form styles */
+html[data-theme="vision"] select, html[data-theme="vision"] input {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 8px !important;
+  padding: 0.5rem 1rem !important;
+  outline: none !important;
+}
+html[data-theme="vision"] select:focus, html[data-theme="vision"] input:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2) !important;
+}
+
+/* Reader bar styling */
+html[data-theme="vision"] #magazineViewport {
+  background: rgba(10, 10, 15, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: inset 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+  border-radius: 16px !important;
+}
+
+html[data-theme="vision"] .bg-white\/80 {
+  background: rgba(20, 20, 28, 0.55) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 9999px !important;
+  padding: 0.75rem 1.5rem !important;
+}
+
+html[data-theme="vision"] #magScrubber {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+html[data-theme="vision"] #magPageInput {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="vision"] .mag-view-btn {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+html[data-theme="vision"] .mag-view-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="vision"] .mag-view-btn-active {
+  background: #6366f1 !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3) !important;
+}
+
+/* Text overrides for dark theme readability */
+html[data-theme="vision"] .text-gray-900, 
+html[data-theme="vision"] .text-gray-800, 
+html[data-theme="vision"] .text-gray-700, 
+html[data-theme="vision"] .text-gray-600 {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+html[data-theme="vision"] .text-gray-500, 
+html[data-theme="vision"] .text-gray-400 {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Action buttons styling */
+html[data-theme="vision"] .btn-primary, 
+html[data-theme="vision"] .btn-danger, 
+html[data-theme="vision"] .btn-outline {
+  border-radius: 9999px !important;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+  font-weight: 500 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+html[data-theme="vision"] .btn-primary {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+html[data-theme="vision"] .btn-primary:hover {
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%) !important;
+  transform: translateY(-2px) scale(1.03) !important;
+  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+html[data-theme="vision"] .btn-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+html[data-theme="vision"] .btn-danger:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+  transform: translateY(-2px) scale(1.03) !important;
+  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+html[data-theme="vision"] .btn-outline {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+html[data-theme="vision"] .btn-outline:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  transform: translateY(-2px) scale(1.03) !important;
+  box-shadow: 0 6px 18px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+.line-clamp-2 { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.line-clamp-3 { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
 
 /* ==========================================
    Soporte de Visualización Premium de Revista
@@ -491,5 +827,182 @@ html[data-theme="mono"] img { filter: grayscale(100%); }
   animation: shineSingle 450ms ease-in-out forwards;
   -webkit-animation: shineSingle 450ms ease-in-out forwards;
 }
+
+/* Fix for Fullscreen Toggle contrast & style (Apple Vision glass style) */
+html[data-theme="vision"] #magFullscreenToggle {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+html[data-theme="vision"] #magFullscreenToggle:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  transform: translateY(-1px) scale(1.02) !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3) !important;
+}
+html[data-theme="vision"] #magFullscreenToggle svg {
+  color: #ffffff !important;
+}
+
+/* Modal view buttons styling */
+html[data-theme="vision"] #viewerControls button, html[data-theme="vision"] #closeViewerBtn {
+  border-radius: 9999px !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2) !important;
+}
+html[data-theme="vision"] #viewerControls button:hover, html[data-theme="vision"] #closeViewerBtn:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  transform: scale(1.05) !important;
+}
+
+/* Theme toggle button styling (circular button) */
+#visionThemeToggleBtn {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  color: #0f172a !important;
+  border-radius: 9999px !important;
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  font-size: 1.1rem !important;
+}
+#visionThemeToggleBtn:hover {
+  background: rgba(0, 0, 0, 0.1) !important;
+  transform: scale(1.05) !important;
+}
+
+/* Theme toggle button styling in vision theme */
+html[data-theme="vision"] #visionThemeToggleBtn {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+html[data-theme="vision"] #visionThemeToggleBtn:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  transform: scale(1.05) !important;
+}
+
+/* --- Morphing Theme Transitions & View Transitions --- */
+
+/* Enable view transitions on key elements */
+header {
+  view-transition-name: main-header;
+}
+
+#visionThemeToggleBtn {
+  view-transition-name: theme-toggle-button;
+}
+
+/* Set up standard CSS transitions for browsers that don't support View Transitions 
+   or to complement View Transitions for a buttery smooth experience */
+body {
+  transition: background 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.4s ease;
+}
+
+header {
+  transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+header * {
+  transition: color 0.4s ease, background 0.4s ease, border-color 0.4s ease;
+}
+
+#visionThemeToggleBtn, #menuBtn {
+  transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+/* Main containers and cards morphing transition */
+.bg-white, 
+#viewerModal .bg-white, 
+#infoPopup .bg-white, 
+#voteLock .bg-white,
+main section > div.bg-white,
+#sideMenu,
+.card,
+.mag-view-btn,
+.cover-card,
+button,
+input,
+select,
+aside,
+footer {
+  transition: background 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+              backdrop-filter 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+              -webkit-backdrop-filter 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+              border-radius 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.4s ease,
+              transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+/* Typography morphing transition */
+h1, h2, h3, h4, h5, h6, p, span, a, label {
+  transition: color 0.4s ease,
+              font-family 0.6s ease,
+              font-weight 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+              letter-spacing 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+              text-shadow 0.4s ease;
+}
+
+/* Customize font-weight and letter-spacing transition details */
+html[data-theme="vision"] h1, 
+html[data-theme="vision"] h2, 
+html[data-theme="vision"] h3, 
+html[data-theme="vision"] h4, 
+html[data-theme="vision"] h5, 
+html[data-theme="vision"] h6 {
+  letter-spacing: -0.02em;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
+}
+
+/* Smooth fade for glow orbs */
+html body::before, html body::after {
+  opacity: 0;
+  transition: opacity 0.8s ease-in-out;
+}
+html[data-theme="vision"] body::before, html[data-theme="vision"] body::after {
+  opacity: 1;
+}
+
+/* Customize View Transitions animation timing and style */
+::view-transition-group(root) {
+  animation-duration: 0.65s;
+  animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+::view-transition-old(root) {
+  animation: fade-out 0.3s ease-out both;
+}
+
+::view-transition-new(root) {
+  animation: fade-in 0.4s ease-in both;
+}
+
+@keyframes fade-out {
+  from { opacity: 1; filter: blur(0px); }
+  to { opacity: 0; filter: blur(10px); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; filter: blur(10px); }
+  to { opacity: 1; filter: blur(0px); }
+}
+
 
 

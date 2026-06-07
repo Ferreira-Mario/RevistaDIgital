@@ -4,6 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Bocetos — 2ª Sección</title>
+    <script>
+      (function() {
+        const saved = localStorage.getItem('site-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', saved);
+      })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://drive.google.com" />
     <link rel="dns-prefetch" href="//drive.google.com" />
@@ -23,11 +29,19 @@
             La Huella del Alce
           </span>
         </button>
-        <button id="menuBtn" class="p-3 hover:bg-gray-100 rounded-lg transition-colors" aria-label="Menú">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 sm:w-9 sm:h-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-          </svg>
-        </button>
+        <div class="flex items-center gap-2 sm:gap-3">
+          <button
+            id="visionThemeToggleBtn"
+            aria-label="Cambiar Tema"
+          >
+            🕶️
+          </button>
+          <button id="menuBtn" class="p-3 hover:bg-gray-100 rounded-lg transition-colors" aria-label="Menú">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 sm:w-9 sm:h-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </button>
+        </div>
       </div>
     </header>
     <aside id="sideMenu" class="fixed top-0 right-0 h-full w-full sm:w-96 max-w-[90vw] bg-white shadow-2xl transform transition-transform duration-300 z-50 translate-x-full">

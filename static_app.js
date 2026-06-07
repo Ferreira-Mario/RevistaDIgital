@@ -2071,6 +2071,8 @@ async function fetchFirstJSON(urls) {
   }
 });
 
+/* 
+// Legacy Mono/Color Theme Toggle - Commented out to avoid conflict with the new Vision/Classic theme selector.
 const themeToggleBtn = document.getElementById('themeToggleBtn');
 
 function applyTheme(theme) {
@@ -2094,6 +2096,7 @@ function applyTheme(theme) {
     });
   }
 })();
+*/
 
 // Config global de feeds de Drive (merges con existente)
 (function initDriveFeeds(){
@@ -2307,59 +2310,748 @@ async function renderResults(sectionId) {
 const DRIVE_ONLY = true;
 const USE_REALTIME = true;
 
+// --- Estado y elementos globales del visor de la revista ---
+const magazineState = {
+  idx: 0,
+  viewMode: 'book', // Se calcula inicialmente según el tamaño de pantalla
+  pages: [],
+  numSpreads: 0,
+  isFlipping: false,
+  flipTimeout: null,
+  zoomScale: 1.0,
+  preloadedImages: new Map()
+};
+
+const magazineElements = {
+  viewport: null, book: null, pageWrap: null, img: null,
+  centeredWrapper: null, spreadWrapper: null, spreadLeftImg: null, spreadRightImg: null,
+  spineShadow: null, prevOverlay: null, nextOverlay: null,
+  prevBtn: null, nextBtn: null, scrubber: null,
+  zoomIn: null, zoomOut: null, zoomReset: null, zoomVal: null,
+  pageInput: null, totalPagesText: null, fsToggle: null, card: null,
+  flipPage: null, flipImgFront: null, flipImgBack: null, flipShineFront: null, flipShineBack: null,
+  singleFlip: null, singleFlipImg: null, singleFlipShine: null,
+  leftPage: null, leftImg: null, rightPage: null, rightImg: null,
+  magazineSpine: null, viewModeBookBtn: null, viewModeSingleBtn: null
+};
+
+function initMagazineElements() {
+  magazineElements.viewport = document.getElementById('magazineViewport');
+  magazineElements.book = document.getElementById('magazineBook');
+  magazineElements.pageWrap = document.getElementById('magazinePage');
+  magazineElements.img = document.getElementById('magazineImage');
+  magazineElements.centeredWrapper = document.getElementById('magazineCenteredWrapper');
+  magazineElements.spreadWrapper = document.getElementById('magazineSpreadWrapper');
+  magazineElements.spreadLeftImg = document.getElementById('magazineSpreadLeftImage');
+  magazineElements.spreadRightImg = document.getElementById('magazineSpreadRightImage');
+  magazineElements.spineShadow = document.getElementById('magazineSpineShadow');
+  magazineElements.prevOverlay = document.getElementById('magPrevOverlay');
+  magazineElements.nextOverlay = document.getElementById('magNextOverlay');
+  magazineElements.prevBtn = document.getElementById('magPrevBtn');
+  magazineElements.nextBtn = document.getElementById('magNextBtn');
+  magazineElements.scrubber = document.getElementById('magScrubber');
+  magazineElements.zoomIn = document.getElementById('magZoomIn');
+  magazineElements.zoomOut = document.getElementById('magZoomOut');
+  magazineElements.zoomReset = document.getElementById('magZoomReset');
+  magazineElements.zoomVal = document.getElementById('magZoomVal');
+  magazineElements.pageInput = document.getElementById('magPageInput');
+  magazineElements.totalPagesText = document.getElementById('magTotalPages');
+  magazineElements.fsToggle = document.getElementById('magFullscreenToggle');
+  magazineElements.card = document.getElementById('magazineCard');
+  magazineElements.flipPage = document.getElementById('magazineFlipPage');
+  magazineElements.flipImgFront = document.getElementById('magazineFlipImageFront');
+  magazineElements.flipImgBack = document.getElementById('magazineFlipImageBack');
+  magazineElements.flipShineFront = document.getElementById('magazineFlipShineFront');
+  magazineElements.flipShineBack = document.getElementById('magazineFlipShineBack');
+  magazineElements.singleFlip = document.getElementById('magazineSingleFlip');
+  magazineElements.singleFlipImg = document.getElementById('magazineSingleFlipImage');
+  magazineElements.singleFlipShine = document.getElementById('magazineSingleFlipShine');
+  magazineElements.leftPage = document.getElementById('magazineLeftPage');
+  magazineElements.leftImg = document.getElementById('magazineLeftImage');
+  magazineElements.rightPage = document.getElementById('magazineRightPage');
+  magazineElements.rightImg = document.getElementById('magazineRightImage');
+  magazineElements.magazineSpine = document.getElementById('magazineSpine');
+  magazineElements.viewModeBookBtn = document.getElementById('magViewModeBook');
+  magazineElements.viewModeSingleBtn = document.getElementById('magViewModeSingle');
+}
+
+function cancelFlip() {
+  if (magazineState.flipTimeout) {
+    clearTimeout(magazineState.flipTimeout);
+    magazineState.flipTimeout = null;
+  }
+  if (magazineState.isFlipping) {
+    const { flipPage, leftPage, rightPage, singleFlip, pageWrap } = magazineElements;
+    if (flipPage) {
+      flipPage.classList.add('hidden');
+      flipPage.classList.remove('animate-flip-next', 'animate-flip-prev');
+    }
+    if (leftPage) leftPage.classList.add('hidden');
+    if (rightPage) rightPage.classList.add('hidden');
+    if (singleFlip) {
+      singleFlip.classList.add('hidden');
+      singleFlip.classList.remove('animate-single-flip-next', 'animate-single-flip-prev');
+    }
+    if (pageWrap) {
+      pageWrap.style.transition = 'none';
+      pageWrap.style.opacity = '1';
+    }
+    magazineState.isFlipping = false;
+  }
+}
+
+function goPrev() {
+  if (magazineState.viewMode === 'book') {
+    flip(magazineState.idx - 1);
+  } else {
+    flipSingle(magazineState.idx - 1);
+  }
+}
+
+function goNext() {
+  if (magazineState.viewMode === 'book') {
+    flip(magazineState.idx + 1);
+  } else {
+    flipSingle(magazineState.idx + 1);
+  }
+}
+
+function updateScrubberLimits() {
+  const { scrubber } = magazineElements;
+  if (!scrubber) return;
+  if (magazineState.viewMode === 'book') {
+    scrubber.min = 0;
+    scrubber.max = magazineState.numSpreads - 1;
+    scrubber.value = magazineState.idx;
+  } else {
+    scrubber.min = 0;
+    scrubber.max = magazineState.pages.length - 1;
+    scrubber.value = magazineState.idx;
+  }
+}
+
+function preloadImage(url) {
+  if (!url || magazineState.preloadedImages.has(url)) return;
+  const imgObj = new Image();
+  imgObj.src = url;
+  magazineState.preloadedImages.set(url, imgObj);
+}
+
+function preloadAdjacentSpreads() {
+  const { pages, idx, viewMode, numSpreads } = magazineState;
+  if (!pages || !pages.length) return;
+  if (viewMode === 'book') {
+    const nextIdx = idx + 1;
+    if (nextIdx < numSpreads) {
+      if (nextIdx === 0) {
+        if (pages[0]) preloadImage(pages[0].url);
+      } else {
+        const lp = pages[2 * nextIdx - 1];
+        const rp = pages[2 * nextIdx];
+        if (lp) preloadImage(lp.url);
+        if (rp) preloadImage(rp.url);
+      }
+    }
+    const prevIdx = idx - 1;
+    if (prevIdx >= 0) {
+      if (prevIdx === 0) {
+        if (pages[0]) preloadImage(pages[0].url);
+      } else {
+        const lp = pages[2 * prevIdx - 1];
+        const rp = pages[2 * prevIdx];
+        if (lp) preloadImage(lp.url);
+        if (rp) preloadImage(rp.url);
+      }
+    }
+  } else {
+    const nextIdx = idx + 1;
+    if (nextIdx < pages.length) {
+      preloadImage(pages[nextIdx].url);
+    }
+    const prevIdx = idx - 1;
+    if (prevIdx >= 0) {
+      preloadImage(pages[prevIdx].url);
+    }
+  }
+}
+
+function applyZoom() {
+  const { pageWrap, zoomVal, viewport } = magazineElements;
+  if (pageWrap) {
+    pageWrap.style.transform = `scale(${magazineState.zoomScale})`;
+    pageWrap.style.transformOrigin = 'center center';
+  }
+  if (zoomVal) zoomVal.textContent = `${Math.round(magazineState.zoomScale * 100)}%`;
+  
+  if (magazineState.zoomScale > 1.0) {
+    if (viewport) viewport.style.overflow = 'auto';
+    if (pageWrap) pageWrap.classList.remove('pointer-events-none');
+  } else {
+    if (viewport) {
+      viewport.style.overflow = 'hidden';
+      viewport.scrollLeft = 0;
+      viewport.scrollTop = 0;
+    }
+    if (pageWrap) pageWrap.classList.add('pointer-events-none');
+  }
+}
+
+function resetZoom() {
+  magazineState.zoomScale = 1.0;
+  applyZoom();
+}
+
+function update() {
+  const {
+    centeredWrapper, spreadWrapper, spineShadow, spreadLeftImg,
+    spreadRightImg, pageInput, scrubber, img, magazineSpine
+  } = magazineElements;
+  const { viewMode, idx, pages } = magazineState;
+
+  if (viewMode === 'book') {
+    if (centeredWrapper) centeredWrapper.classList.add('hidden');
+    if (spreadWrapper) spreadWrapper.classList.remove('hidden');
+    if (spineShadow) spineShadow.classList.remove('hidden');
+
+    if (idx === 0) {
+      // Portada a la derecha, izquierda vacía
+      if (spreadLeftImg) {
+        spreadLeftImg.src = '';
+        spreadLeftImg.style.visibility = 'hidden';
+      }
+      const rightPageObj = pages[0];
+      if (rightPageObj && spreadRightImg) {
+        spreadRightImg.src = rightPageObj.url;
+        spreadRightImg.style.visibility = 'visible';
+      }
+      if (pageInput) pageInput.value = 1;
+      if (scrubber) scrubber.value = 0;
+    } else {
+      // Pliego normal
+      const leftPageObj = pages[2 * idx - 1];
+      if (leftPageObj && spreadLeftImg) {
+        spreadLeftImg.src = leftPageObj.url;
+        spreadLeftImg.style.visibility = 'visible';
+      } else if (spreadLeftImg) {
+        spreadLeftImg.src = '';
+        spreadLeftImg.style.visibility = 'hidden';
+      }
+
+      const rightPageObj = pages[2 * idx];
+      if (rightPageObj && spreadRightImg) {
+        spreadRightImg.src = rightPageObj.url;
+        spreadRightImg.style.visibility = 'visible';
+      } else if (spreadRightImg) {
+        spreadRightImg.src = '';
+        spreadRightImg.style.visibility = 'hidden';
+      }
+
+      if (pageInput) pageInput.value = 2 * idx;
+      if (scrubber) scrubber.value = idx;
+    }
+  } else {
+    // Modo página única
+    if (centeredWrapper) centeredWrapper.classList.remove('hidden');
+    if (spreadWrapper) spreadWrapper.classList.add('hidden');
+    if (spineShadow) spineShadow.classList.add('hidden');
+
+    const p = pages[idx];
+    if (p && img) {
+      img.src = p.url;
+    }
+
+    if (pageInput) pageInput.value = idx + 1;
+    if (scrubber) scrubber.value = idx;
+  }
+
+  if (magazineSpine) {
+    if (viewMode === 'book' && idx > 0) {
+      magazineSpine.classList.remove('hidden');
+    } else {
+      magazineSpine.classList.add('hidden');
+    }
+  }
+
+  resetZoom();
+  preloadAdjacentSpreads();
+}
+
+function setViewMode(mode) {
+  if (magazineState.viewMode === mode) return;
+  
+  cancelFlip(); // Cancelar cualquier animación activa de forma segura
+
+  const { viewModeBookBtn, viewModeSingleBtn } = magazineElements;
+  const { idx } = magazineState;
+
+  if (mode === 'book') {
+    const targetSpread = Math.floor((idx + 1) / 2);
+    magazineState.viewMode = 'book';
+    magazineState.idx = targetSpread;
+    
+    if (viewModeBookBtn) viewModeBookBtn.classList.add('mag-view-btn-active');
+    if (viewModeSingleBtn) viewModeSingleBtn.classList.remove('mag-view-btn-active');
+  } else {
+    const targetPage = idx === 0 ? 0 : 2 * idx - 1;
+    magazineState.viewMode = 'single';
+    magazineState.idx = targetPage;
+    
+    if (viewModeBookBtn) viewModeBookBtn.classList.remove('mag-view-btn-active');
+    if (viewModeSingleBtn) viewModeSingleBtn.classList.add('mag-view-btn-active');
+  }
+  
+  updateScrubberLimits();
+  update();
+}
+
+function handleFullscreenChange() {
+  const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
+  const { card, fsToggle } = magazineElements;
+  if (card) {
+    if (isFS) {
+      card.classList.add('magazine-fullscreen-active');
+      if (fsToggle) {
+        fsToggle.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+          <span>Salir Pantalla</span>
+        `;
+      }
+    } else {
+      card.classList.remove('magazine-fullscreen-active');
+      if (fsToggle) {
+        fsToggle.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/>
+          </svg>
+          <span>Pantalla Completa</span>
+        `;
+      }
+    }
+  }
+}
+
+function toggleFullscreen() {
+  const { card } = magazineElements;
+  if (!card) return;
+  
+  const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullscreenElement);
+  if (!isFS) {
+    const req = card.requestFullscreen || card.webkitRequestFullscreen || card.mozRequestFullScreen;
+    if (req) {
+      req.call(card).catch(() => {
+        card.classList.toggle('magazine-fullscreen-active');
+      });
+    } else {
+      card.classList.toggle('magazine-fullscreen-active');
+    }
+  } else {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen;
+    if (exit) {
+      exit.call(document);
+    } else {
+      card.classList.remove('magazine-fullscreen-active');
+    }
+  }
+}
+
+function handleKeyDown(e) {
+  if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+  
+  const isVisible = !document.getElementById('view-magazine').classList.contains('hidden');
+  if (!isVisible) return;
+
+  if (e.key === 'ArrowLeft') {
+    goPrev();
+    e.preventDefault();
+  } else if (e.key === 'ArrowRight') {
+    goNext();
+    e.preventDefault();
+  } else if (e.key === 'f' || e.key === 'F') {
+    toggleFullscreen();
+    e.preventDefault();
+  }
+}
+
+let touchStartX = 0;
+let touchStartY = 0;
+
+function handleTouchStart(e) {
+  if (magazineState.zoomScale > 1.0) return;
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+}
+
+function handleTouchEnd(e) {
+  if (magazineState.zoomScale > 1.0) return;
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  if (Math.abs(dx) > 60 && Math.abs(dy) < 80) {
+    if (dx < 0) goNext();
+    else goPrev();
+  }
+}
+
+function flip(to) {
+  const { idx, isFlipping, pages, numSpreads } = magazineState;
+  if (to === idx || isFlipping || !pages || to < 0 || to >= numSpreads) return;
+  magazineState.isFlipping = true;
+
+  const direction = to > idx ? 'next' : 'prev';
+
+  const {
+    flipPage, flipImgFront, flipImgBack, leftPage, rightPage, leftImg,
+    rightImg, pageWrap, flipShineFront, flipShineBack
+  } = magazineElements;
+
+  try {
+    if (!flipPage || !flipImgFront || !flipImgBack || !leftPage || !rightPage || !leftImg || !rightImg) {
+      if (pageWrap) {
+        pageWrap.style.opacity = '0.3';
+        pageWrap.style.transition = 'opacity 200ms ease';
+      }
+      magazineState.flipTimeout = setTimeout(() => {
+        magazineState.flipTimeout = null;
+        magazineState.idx = to;
+        update();
+        if (pageWrap) pageWrap.style.opacity = '1';
+        magazineState.isFlipping = false;
+      }, 200);
+      return;
+    }
+
+    // Preparar el estado inicial de la animación
+    flipPage.classList.remove('animate-flip-next', 'animate-flip-prev');
+    if (flipShineFront) flipShineFront.classList.remove('animate-shine-front');
+    if (flipShineBack) flipShineBack.classList.remove('animate-shine-back');
+
+    if (direction === 'next') {
+      if (idx === 0) {
+        leftPage.classList.add('hidden');
+        leftImg.src = '';
+      } else {
+        const lpObj = pages[2 * idx - 1];
+        leftImg.src = lpObj ? lpObj.url : '';
+        if (lpObj) {
+          leftPage.classList.remove('hidden');
+        } else {
+          leftPage.classList.add('hidden');
+        }
+      }
+
+      const rightPageObj = pages[2 * to];
+      if (rightPageObj) {
+        rightImg.src = rightPageObj.url;
+        rightImg.style.visibility = 'visible';
+        rightPage.classList.remove('hidden');
+      } else {
+        rightImg.src = '';
+        rightImg.style.visibility = 'hidden';
+        rightPage.classList.remove('hidden');
+      }
+
+      // Ajustado al borde derecho del lomo central (50% + 6px)
+      flipPage.style.left = 'calc(50% + 6px)';
+      flipPage.style.width = 'calc(50% - 6px)';
+      flipPage.style.transformOrigin = 'left center';
+
+      const frontPageObj = idx === 0 ? pages[0] : pages[2 * idx];
+      if (frontPageObj) {
+        flipImgFront.src = frontPageObj.url;
+        flipImgFront.className = "w-full h-full object-contain object-left pointer-events-none select-none";
+      } else {
+        flipImgFront.src = '';
+      }
+
+      const backPageObj = pages[2 * to - 1];
+      if (backPageObj) {
+        flipImgBack.src = backPageObj.url;
+        flipImgBack.className = "w-full h-full object-contain object-right pointer-events-none select-none";
+      } else {
+        flipImgBack.src = '';
+      }
+
+      if (pageWrap) {
+        pageWrap.style.transition = 'none';
+        pageWrap.style.opacity = '0';
+      }
+      flipPage.classList.remove('hidden');
+
+      // Forzar reflujo del navegador para garantizar que se dispare la animación 3D
+      void flipPage.offsetWidth;
+
+      // Activar animaciones CSS tridimensionales
+      flipPage.classList.add('animate-flip-next');
+      if (flipShineFront) flipShineFront.classList.add('animate-shine-front');
+      if (flipShineBack) flipShineBack.classList.add('animate-shine-back');
+
+    } else {
+      if (to === 0) {
+        leftPage.classList.add('hidden');
+        leftImg.src = '';
+      } else {
+        const lpObj = pages[2 * to - 1];
+        leftImg.src = lpObj ? lpObj.url : '';
+        if (lpObj) {
+          leftPage.classList.remove('hidden');
+        } else {
+          leftPage.classList.add('hidden');
+        }
+      }
+
+      const rightPageObj = pages[2 * idx];
+      if (rightPageObj) {
+        rightImg.src = rightPageObj.url;
+        rightImg.style.visibility = 'visible';
+        rightPage.classList.remove('hidden');
+      } else {
+        rightImg.src = '';
+        rightImg.style.visibility = 'hidden';
+        rightPage.classList.remove('hidden');
+      }
+
+      // Ajustado al borde izquierdo del visor (0) con ancho reducido por el lomo (50% - 6px)
+      flipPage.style.left = '0';
+      flipPage.style.width = 'calc(50% - 6px)';
+      flipPage.style.transformOrigin = 'right center';
+
+      const frontPageObj = pages[2 * idx - 1];
+      if (frontPageObj) {
+        flipImgFront.src = frontPageObj.url;
+        flipImgFront.className = "w-full h-full object-contain object-right pointer-events-none select-none";
+      } else {
+        flipImgFront.src = '';
+      }
+
+      const backPageObj = pages[2 * to];
+      if (backPageObj) {
+        flipImgBack.src = backPageObj.url;
+        flipImgBack.className = "w-full h-full object-contain object-left pointer-events-none select-none";
+      } else {
+        flipImgBack.src = '';
+      }
+
+      if (pageWrap) {
+        pageWrap.style.transition = 'none';
+        pageWrap.style.opacity = '0';
+      }
+      flipPage.classList.remove('hidden');
+
+      // Forzar reflujo del navegador para garantizar que se dispare la animación 3D
+      void flipPage.offsetWidth;
+
+      // Activar animaciones CSS tridimensionales
+      flipPage.classList.add('animate-flip-prev');
+      if (flipShineFront) flipShineFront.classList.add('animate-shine-front');
+      if (flipShineBack) flipShineBack.classList.add('animate-shine-back');
+    }
+
+    magazineState.flipTimeout = setTimeout(() => {
+      magazineState.flipTimeout = null;
+      magazineState.idx = to;
+      update();
+      if (pageWrap) {
+        pageWrap.style.transition = 'opacity 150ms ease';
+        pageWrap.style.opacity = '1';
+      }
+      flipPage.classList.add('hidden');
+      leftPage.classList.add('hidden');
+      rightPage.classList.add('hidden');
+      
+      flipPage.classList.remove('animate-flip-next', 'animate-flip-prev');
+      if (flipShineFront) flipShineFront.classList.remove('animate-shine-front');
+      if (flipShineBack) flipShineBack.classList.remove('animate-shine-back');
+      
+      magazineState.isFlipping = false;
+    }, 580);
+
+  } catch (err) {
+    console.error("Error durante la animación 3D del pase de página:", err);
+    // Fallback inmediato y seguro para evitar bloqueos
+    magazineState.idx = to;
+    update();
+    if (pageWrap) {
+      pageWrap.style.transition = 'opacity 150ms ease';
+      pageWrap.style.opacity = '1';
+    }
+    if (flipPage) {
+      flipPage.classList.add('hidden');
+      flipPage.classList.remove('animate-flip-next', 'animate-flip-prev');
+    }
+    if (leftPage) leftPage.classList.add('hidden');
+    if (rightPage) rightPage.classList.add('hidden');
+    magazineState.isFlipping = false;
+  }
+}
+
+function flipSingle(to) {
+  const { idx, isFlipping, pages } = magazineState;
+  if (to === idx || isFlipping || !pages || to < 0 || to >= pages.length) return;
+  magazineState.isFlipping = true;
+
+  const direction = to > idx ? 'next' : 'prev';
+
+  const { singleFlip, singleFlipImg, singleFlipShine } = magazineElements;
+
+  try {
+    if (singleFlip && singleFlipImg) {
+      // 1. Cargar la página actual (origen) en la capa de volteo temporal
+      const origPage = pages[idx];
+      if (origPage) {
+        singleFlipImg.src = origPage.url;
+      } else {
+        singleFlipImg.src = '';
+      }
+
+      // 2. Definir el eje de rotación (transform-origin) según la dirección
+      if (direction === 'next') {
+        singleFlip.style.transformOrigin = 'left center';
+        singleFlip.style.webkitTransformOrigin = 'left center';
+      } else {
+        singleFlip.style.transformOrigin = 'right center';
+        singleFlip.style.webkitTransformOrigin = 'right center';
+      }
+
+      // Limpiar clases de animación previas por si acaso
+      singleFlip.classList.remove('animate-single-flip-next', 'animate-single-flip-prev', 'hidden');
+      if (singleFlipShine) {
+        singleFlipShine.classList.remove('animate-shine-single', 'opacity-0');
+      }
+
+      // 3. Forzar reflujo para disparar la animación 3D
+      void singleFlip.offsetWidth;
+
+      // 4. Cambiar el índice de fondo de inmediato y actualizar la página detrás
+      magazineState.idx = to;
+      update();
+
+      // 5. Iniciar animación 3D de la capa superior
+      if (direction === 'next') {
+        singleFlip.classList.add('animate-single-flip-next');
+      } else {
+        singleFlip.classList.add('animate-single-flip-prev');
+      }
+
+      if (singleFlipShine) {
+        singleFlipShine.classList.add('animate-shine-single');
+      }
+
+      // 6. Limpieza al finalizar la transición (450ms de duración)
+      magazineState.flipTimeout = setTimeout(() => {
+        magazineState.flipTimeout = null;
+        singleFlip.classList.add('hidden');
+        singleFlip.classList.remove('animate-single-flip-next', 'animate-single-flip-prev');
+        if (singleFlipShine) {
+          singleFlipShine.classList.remove('animate-shine-single');
+          singleFlipShine.classList.add('opacity-0');
+        }
+        magazineState.isFlipping = false;
+      }, 450);
+
+    } else {
+      magazineState.idx = to;
+      update();
+      magazineState.isFlipping = false;
+    }
+  } catch (err) {
+    console.error("Error durante la animación 3D de página única:", err);
+    magazineState.idx = to;
+    update();
+    if (singleFlip) {
+      singleFlip.classList.add('hidden');
+      singleFlip.classList.remove('animate-single-flip-next', 'animate-single-flip-prev');
+    }
+    magazineState.isFlipping = false;
+  }
+}
+
+function setupMagazineEvents() {
+  const {
+    prevBtn, nextBtn, prevOverlay, nextOverlay, scrubber, pageInput,
+    zoomIn, zoomOut, zoomReset, fsToggle, viewport, viewModeBookBtn, viewModeSingleBtn
+  } = magazineElements;
+
+  if (prevBtn) prevBtn.onclick = goPrev;
+  if (nextBtn) nextBtn.onclick = goNext;
+  if (prevOverlay) prevOverlay.onclick = goPrev;
+  if (nextOverlay) nextOverlay.onclick = goNext;
+
+  if (scrubber) {
+    scrubber.oninput = (e) => {
+      const val = parseInt(e.target.value, 10);
+      if (magazineState.viewMode === 'book') {
+        flip(val);
+      } else {
+        flipSingle(val);
+      }
+    };
+  }
+
+  if (pageInput) {
+    pageInput.onchange = (e) => {
+      let val = parseInt(e.target.value, 10);
+      if (isNaN(val) || val < 1) val = 1;
+      if (val > magazineState.pages.length) val = magazineState.pages.length;
+      e.target.value = val;
+      
+      if (magazineState.viewMode === 'book') {
+        let targetIdx = Math.floor(val / 2);
+        flip(targetIdx);
+      } else {
+        flipSingle(val - 1);
+      }
+    };
+  }
+
+  if (zoomIn) {
+    zoomIn.onclick = () => {
+      if (magazineState.zoomScale < 2.5) {
+        magazineState.zoomScale = Math.min(2.5, magazineState.zoomScale + 0.25);
+        applyZoom();
+      }
+    };
+  }
+  if (zoomOut) {
+    zoomOut.onclick = () => {
+      if (magazineState.zoomScale > 1.0) {
+        magazineState.zoomScale = Math.max(1.0, magazineState.zoomScale - 0.25);
+        applyZoom();
+      }
+    };
+  }
+  if (zoomReset) {
+    zoomReset.onclick = resetZoom;
+  }
+
+  if (fsToggle) fsToggle.onclick = toggleFullscreen;
+
+  document.addEventListener('fullscreenchange', handleFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+  document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+
+  window.addEventListener('keydown', handleKeyDown);
+
+  if (viewport) {
+    viewport.addEventListener('touchstart', handleTouchStart, { passive: true });
+    viewport.addEventListener('touchend', handleTouchEnd, { passive: true });
+  }
+
+  if (viewModeBookBtn) {
+    viewModeBookBtn.onclick = () => setViewMode('book');
+  }
+  if (viewModeSingleBtn) {
+    viewModeSingleBtn.onclick = () => setViewMode('single');
+  }
+}
+
 async function renderMagazine() {
-  const viewport = document.getElementById('magazineViewport');
-  const book = document.getElementById('magazineBook');
-    const pageWrap = document.getElementById('magazinePage');
-    const img = document.getElementById('magazineImage');
-    
-    // Selectores para pliegos dobles y lomo central
-    const centeredWrapper = document.getElementById('magazineCenteredWrapper');
-    const spreadWrapper = document.getElementById('magazineSpreadWrapper');
-    const spreadLeftImg = document.getElementById('magazineSpreadLeftImage');
-    const spreadRightImg = document.getElementById('magazineSpreadRightImage');
-    const spineShadow = document.getElementById('magazineSpineShadow');
-    
-    // Controles flotantes y de superposición
-    const prevOverlay = document.getElementById('magPrevOverlay');
-    const nextOverlay = document.getElementById('magNextOverlay');
-    
-    // Controles de barra inferior
-    const prevBtn = document.getElementById('magPrevBtn');
-    const nextBtn = document.getElementById('magNextBtn');
-    const scrubber = document.getElementById('magScrubber');
-    
-    // Controles de Zoom
-    const zoomIn = document.getElementById('magZoomIn');
-    const zoomOut = document.getElementById('magZoomOut');
-    const zoomReset = document.getElementById('magZoomReset');
-    const zoomVal = document.getElementById('magZoomVal');
-    
-    // Controles de página directa e inmersión
-    const pageInput = document.getElementById('magPageInput');
-    const totalPagesText = document.getElementById('magTotalPages');
-    const fsToggle = document.getElementById('magFullscreenToggle');
-    const card = document.getElementById('magazineCard');
-    
-    // Elementos de animación 3D y capas temporales
-    const flipPage = document.getElementById('magazineFlipPage');
-    const flipImgFront = document.getElementById('magazineFlipImageFront');
-    const flipImgBack = document.getElementById('magazineFlipImageBack');
-    const flipShineFront = document.getElementById('magazineFlipShineFront');
-    const flipShineBack = document.getElementById('magazineFlipShineBack');
+  initMagazineElements();
+  const { viewport, pageWrap, img, totalPagesText, pageInput, viewModeBookBtn, viewModeSingleBtn } = magazineElements;
+  if (!viewport || !pageWrap || !img) return;
 
-    const singleFlip = document.getElementById('magazineSingleFlip');
-    const singleFlipImg = document.getElementById('magazineSingleFlipImage');
-    const singleFlipShine = document.getElementById('magazineSingleFlipShine');
-
-    const leftPage = document.getElementById('magazineLeftPage');
-    const leftImg = document.getElementById('magazineLeftImage');
-    const rightPage = document.getElementById('magazineRightPage');
-    const rightImg = document.getElementById('magazineRightImage');
-    const magazineSpine = document.getElementById('magazineSpine');
-
-    if (!viewport || !pageWrap || !img) return;
-    
+  if (magazineState.pages.length === 0) {
+    // Cargar páginas
     const folderId = String(window.magazineFolderId || '').trim();
     let files = [];
     if (folderId) {
@@ -2370,7 +3062,7 @@ async function renderMagazine() {
       if (sub) files = await listDriveFolderFiles(sub);
     }
     files = Array.isArray(files) ? files : [];
-    
+
     // Cargar y ordenar páginas numéricamente
     const pages = files.map(f => ({ id: f.id, name: f.name, url: resolveDriveUrl(f.id, 'w2000') }));
     const getNum = (name) => {
@@ -2384,649 +3076,89 @@ async function renderMagazine() {
       return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
     });
 
-    if (!pages.length) {
-      img.removeAttribute('src');
-      if (totalPagesText) totalPagesText.textContent = '0';
-      if (pageInput) pageInput.value = '0';
-      return;
-    }
-
-    // Selectores de Modo de Vista
-    const viewModeBookBtn = document.getElementById('magViewModeBook');
-    const viewModeSingleBtn = document.getElementById('magViewModeSingle');
-    let viewMode = 'book'; // 'book' o 'single'
-    if (window.innerWidth < 768) {
-      viewMode = 'single';
-    }
-
-    let idx = 0; // Si es 'book', es spreadIndex. Si es 'single', es pageIndex.
-    let isFlipping = false;
-    let zoomScale = 1.0;
-
-    const numSpreads = Math.ceil((pages.length + 1) / 2);
-
-    // Inicializar controles de UI
-    if (totalPagesText) totalPagesText.textContent = pages.length;
-    if (pageInput) {
-      pageInput.value = 1;
-      pageInput.max = pages.length;
-    }
-    
-    // Forzar consistencia de estilos si iniciamos en Modo Página Única
-    if (viewMode === 'single') {
-      if (viewModeBookBtn) viewModeBookBtn.classList.remove('mag-view-btn-active');
-      if (viewModeSingleBtn) viewModeSingleBtn.classList.add('mag-view-btn-active');
-    }
-
-    function updateScrubberLimits() {
-      if (!scrubber) return;
-      if (viewMode === 'book') {
-        scrubber.min = 0;
-        scrubber.max = numSpreads - 1;
-        scrubber.value = idx;
-      } else {
-        scrubber.min = 0;
-        scrubber.max = pages.length - 1;
-        scrubber.value = idx;
-      }
-    }
-
-    const preloadedImages = new Map();
-    function preloadImage(url) {
-      if (!url || preloadedImages.has(url)) return;
-      const imgObj = new Image();
-      imgObj.src = url;
-      preloadedImages.set(url, imgObj);
-    }
-
-    function preloadAdjacentSpreads() {
-      if (!pages || !pages.length) return;
-      if (viewMode === 'book') {
-        const nextIdx = idx + 1;
-        if (nextIdx < numSpreads) {
-          if (nextIdx === 0) {
-            if (pages[0]) preloadImage(pages[0].url);
-          } else {
-            const lp = pages[2 * nextIdx - 1];
-            const rp = pages[2 * nextIdx];
-            if (lp) preloadImage(lp.url);
-            if (rp) preloadImage(rp.url);
-          }
-        }
-        const prevIdx = idx - 1;
-        if (prevIdx >= 0) {
-          if (prevIdx === 0) {
-            if (pages[0]) preloadImage(pages[0].url);
-          } else {
-            const lp = pages[2 * prevIdx - 1];
-            const rp = pages[2 * prevIdx];
-            if (lp) preloadImage(lp.url);
-            if (rp) preloadImage(rp.url);
-          }
-        }
-      } else {
-        const nextIdx = idx + 1;
-        if (nextIdx < pages.length) {
-          preloadImage(pages[nextIdx].url);
-        }
-        const prevIdx = idx - 1;
-        if (prevIdx >= 0) {
-          preloadImage(pages[prevIdx].url);
-        }
-      }
-    }
-
-    // Actualizar visualización de página
-    function update() {
-      if (viewMode === 'book') {
-        if (centeredWrapper) centeredWrapper.classList.add('hidden');
-        if (spreadWrapper) spreadWrapper.classList.remove('hidden');
-        if (spineShadow) spineShadow.classList.remove('hidden');
-
-        if (idx === 0) {
-          // Portada a la derecha, izquierda vacía
-          if (spreadLeftImg) {
-            spreadLeftImg.src = '';
-            spreadLeftImg.style.visibility = 'hidden';
-          }
-          const rightPageObj = pages[0];
-          if (rightPageObj && spreadRightImg) {
-            spreadRightImg.src = rightPageObj.url;
-            spreadRightImg.style.visibility = 'visible';
-          }
-          if (pageInput) pageInput.value = 1;
-          if (scrubber) scrubber.value = 0;
-        } else {
-          // Pliego normal
-          const leftPageObj = pages[2 * idx - 1];
-          if (leftPageObj && spreadLeftImg) {
-            spreadLeftImg.src = leftPageObj.url;
-            spreadLeftImg.style.visibility = 'visible';
-          } else if (spreadLeftImg) {
-            spreadLeftImg.src = '';
-            spreadLeftImg.style.visibility = 'hidden';
-          }
-
-          const rightPageObj = pages[2 * idx];
-          if (rightPageObj && spreadRightImg) {
-            spreadRightImg.src = rightPageObj.url;
-            spreadRightImg.style.visibility = 'visible';
-          } else if (spreadRightImg) {
-            spreadRightImg.src = '';
-            spreadRightImg.style.visibility = 'hidden';
-          }
-
-          if (pageInput) pageInput.value = 2 * idx;
-          if (scrubber) scrubber.value = idx;
-        }
-      } else {
-        // Modo página única
-        if (centeredWrapper) centeredWrapper.classList.remove('hidden');
-        if (spreadWrapper) spreadWrapper.classList.add('hidden');
-        if (spineShadow) spineShadow.classList.add('hidden');
-
-        const p = pages[idx];
-        if (p && img) {
-          img.src = p.url;
-        }
-
-        if (pageInput) pageInput.value = idx + 1;
-        if (scrubber) scrubber.value = idx;
-      }
-
-      if (magazineSpine) {
-        if (viewMode === 'book' && idx > 0) {
-          magazineSpine.classList.remove('hidden');
-        } else {
-          magazineSpine.classList.add('hidden');
-        }
-      }
-
-      resetZoom();
-      preloadAdjacentSpreads();
-    }
-
-    // Animación 3D realista de Pase de Página (Page-Turn) de doble cara física para Modo Libro
-    function flip(to) {
-      if (to === idx || isFlipping || !pages || to < 0 || to >= numSpreads) return;
-      isFlipping = true;
-
-      const direction = to > idx ? 'next' : 'prev';
-
-      try {
-        if (!flipPage || !flipImgFront || !flipImgBack || !leftPage || !rightPage || !leftImg || !rightImg) {
-          if (pageWrap) {
-            pageWrap.style.opacity = '0.3';
-            pageWrap.style.transition = 'opacity 200ms ease';
-          }
-          setTimeout(() => {
-            idx = to;
-            update();
-            if (pageWrap) pageWrap.style.opacity = '1';
-            isFlipping = false;
-          }, 200);
-          return;
-        }
-
-        // Preparar el estado inicial de la animación
-        flipPage.classList.remove('animate-flip-next', 'animate-flip-prev');
-        if (flipShineFront) flipShineFront.classList.remove('animate-shine-front');
-        if (flipShineBack) flipShineBack.classList.remove('animate-shine-back');
-
-        if (direction === 'next') {
-          if (idx === 0) {
-            leftPage.classList.add('hidden');
-            leftImg.src = '';
-          } else {
-            const lpObj = pages[2 * idx - 1];
-            leftImg.src = lpObj ? lpObj.url : '';
-            if (lpObj) {
-              leftPage.classList.remove('hidden');
-            } else {
-              leftPage.classList.add('hidden');
-            }
-          }
-
-          const rightPageObj = pages[2 * to];
-          if (rightPageObj) {
-            rightImg.src = rightPageObj.url;
-            rightImg.style.visibility = 'visible';
-            rightPage.classList.remove('hidden');
-          } else {
-            rightImg.src = '';
-            rightImg.style.visibility = 'hidden';
-            rightPage.classList.remove('hidden');
-          }
-
-          // Ajustado al borde derecho del lomo central (50% + 6px)
-          flipPage.style.left = 'calc(50% + 6px)';
-          flipPage.style.width = 'calc(50% - 6px)';
-          flipPage.style.transformOrigin = 'left center';
-
-          const frontPageObj = idx === 0 ? pages[0] : pages[2 * idx];
-          if (frontPageObj) {
-            flipImgFront.src = frontPageObj.url;
-            flipImgFront.className = "w-full h-full object-contain object-left pointer-events-none select-none";
-          } else {
-            flipImgFront.src = '';
-          }
-
-          const backPageObj = pages[2 * to - 1];
-          if (backPageObj) {
-            flipImgBack.src = backPageObj.url;
-            flipImgBack.className = "w-full h-full object-contain object-right pointer-events-none select-none";
-          } else {
-            flipImgBack.src = '';
-          }
-
-          if (pageWrap) {
-            pageWrap.style.transition = 'none';
-            pageWrap.style.opacity = '0';
-          }
-          flipPage.classList.remove('hidden');
-
-          // Forzar reflujo del navegador para garantizar que se dispare la animación 3D
-          void flipPage.offsetWidth;
-
-          // Activar animaciones CSS tridimensionales
-          flipPage.classList.add('animate-flip-next');
-          if (flipShineFront) flipShineFront.classList.add('animate-shine-front');
-          if (flipShineBack) flipShineBack.classList.add('animate-shine-back');
-
-        } else {
-          if (to === 0) {
-            leftPage.classList.add('hidden');
-            leftImg.src = '';
-          } else {
-            const lpObj = pages[2 * to - 1];
-            leftImg.src = lpObj ? lpObj.url : '';
-            if (lpObj) {
-              leftPage.classList.remove('hidden');
-            } else {
-              leftPage.classList.add('hidden');
-            }
-          }
-
-          const rightPageObj = pages[2 * idx];
-          if (rightPageObj) {
-            rightImg.src = rightPageObj.url;
-            rightImg.style.visibility = 'visible';
-            rightPage.classList.remove('hidden');
-          } else {
-            rightImg.src = '';
-            rightImg.style.visibility = 'hidden';
-            rightPage.classList.remove('hidden');
-          }
-
-          // Ajustado al borde izquierdo del visor (0) con ancho reducido por el lomo (50% - 6px)
-          flipPage.style.left = '0';
-          flipPage.style.width = 'calc(50% - 6px)';
-          flipPage.style.transformOrigin = 'right center';
-
-          const frontPageObj = pages[2 * idx - 1];
-          if (frontPageObj) {
-            flipImgFront.src = frontPageObj.url;
-            flipImgFront.className = "w-full h-full object-contain object-right pointer-events-none select-none";
-          } else {
-            flipImgFront.src = '';
-          }
-
-          const backPageObj = pages[2 * to];
-          if (backPageObj) {
-            flipImgBack.src = backPageObj.url;
-            flipImgBack.className = "w-full h-full object-contain object-left pointer-events-none select-none";
-          } else {
-            flipImgBack.src = '';
-          }
-
-          if (pageWrap) {
-            pageWrap.style.transition = 'none';
-            pageWrap.style.opacity = '0';
-          }
-          flipPage.classList.remove('hidden');
-
-          // Forzar reflujo del navegador para garantizar que se dispare la animación 3D
-          void flipPage.offsetWidth;
-
-          // Activar animaciones CSS tridimensionales
-          flipPage.classList.add('animate-flip-prev');
-          if (flipShineFront) flipShineFront.classList.add('animate-shine-front');
-          if (flipShineBack) flipShineBack.classList.add('animate-shine-back');
-        }
-
-        setTimeout(() => {
-          idx = to;
-          update();
-          if (pageWrap) {
-            pageWrap.style.transition = 'opacity 150ms ease';
-            pageWrap.style.opacity = '1';
-          }
-          flipPage.classList.add('hidden');
-          leftPage.classList.add('hidden');
-          rightPage.classList.add('hidden');
-          
-          flipPage.classList.remove('animate-flip-next', 'animate-flip-prev');
-          if (flipShineFront) flipShineFront.classList.remove('animate-shine-front');
-          if (flipShineBack) flipShineBack.classList.remove('animate-shine-back');
-          
-          isFlipping = false;
-        }, 580);
-
-      } catch (err) {
-        console.error("Error durante la animación 3D del pase de página:", err);
-        // Fallback inmediato y seguro para evitar bloqueos
-        idx = to;
-        update();
-        if (pageWrap) {
-          pageWrap.style.transition = 'opacity 150ms ease';
-          pageWrap.style.opacity = '1';
-        }
-        if (flipPage) {
-          flipPage.classList.add('hidden');
-          flipPage.classList.remove('animate-flip-next', 'animate-flip-prev');
-        }
-        if (leftPage) leftPage.classList.add('hidden');
-        if (rightPage) rightPage.classList.add('hidden');
-        isFlipping = false;
-      }
-    }
-
-    // Animación premium en 3D de pase de hoja para Modo Página Única
-    function flipSingle(to) {
-      if (to === idx || isFlipping || !pages || to < 0 || to >= pages.length) return;
-      isFlipping = true;
-
-      const direction = to > idx ? 'next' : 'prev';
-
-      try {
-        if (singleFlip && singleFlipImg) {
-          // 1. Cargar la página actual (origen) en la capa de volteo temporal
-          const origPage = pages[idx];
-          if (origPage) {
-            singleFlipImg.src = origPage.url;
-          } else {
-            singleFlipImg.src = '';
-          }
-
-          // 2. Definir el eje de rotación (transform-origin) según la dirección
-          if (direction === 'next') {
-            singleFlip.style.transformOrigin = 'left center';
-            singleFlip.style.webkitTransformOrigin = 'left center';
-          } else {
-            singleFlip.style.transformOrigin = 'right center';
-            singleFlip.style.webkitTransformOrigin = 'right center';
-          }
-
-          // Limpiar clases de animación previas por si acaso
-          singleFlip.classList.remove('animate-single-flip-next', 'animate-single-flip-prev', 'hidden');
-          if (singleFlipShine) {
-            singleFlipShine.classList.remove('animate-shine-single', 'opacity-0');
-          }
-
-          // 3. Forzar reflujo para disparar la animación 3D
-          void singleFlip.offsetWidth;
-
-          // 4. Cambiar el índice de fondo de inmediato y actualizar la página detrás
-          idx = to;
-          update();
-
-          // 5. Iniciar animación 3D de la capa superior
-          if (direction === 'next') {
-            singleFlip.classList.add('animate-single-flip-next');
-          } else {
-            singleFlip.classList.add('animate-single-flip-prev');
-          }
-
-          if (singleFlipShine) {
-            singleFlipShine.classList.add('animate-shine-single');
-          }
-
-          // 6. Limpieza al finalizar la transición (450ms de duración)
-          setTimeout(() => {
-            singleFlip.classList.add('hidden');
-            singleFlip.classList.remove('animate-single-flip-next', 'animate-single-flip-prev');
-            if (singleFlipShine) {
-              singleFlipShine.classList.remove('animate-shine-single');
-              singleFlipShine.classList.add('opacity-0');
-            }
-            isFlipping = false;
-          }, 450);
-
-        } else {
-          idx = to;
-          update();
-          isFlipping = false;
-        }
-      } catch (err) {
-        console.error("Error durante la animación 3D de página única:", err);
-        idx = to;
-        update();
-        if (singleFlip) {
-          singleFlip.classList.add('hidden');
-          singleFlip.classList.remove('animate-single-flip-next', 'animate-single-flip-prev');
-        }
-        isFlipping = false;
-      }
-    }
-
-    const goPrev = () => {
-      if (viewMode === 'book') {
-        flip(idx - 1);
-      } else {
-        flipSingle(idx - 1);
-      }
-    };
-    const goNext = () => {
-      if (viewMode === 'book') {
-        flip(idx + 1);
-      } else {
-        flipSingle(idx + 1);
-      }
-    };
-
-    if (prevBtn) prevBtn.onclick = goPrev;
-    if (nextBtn) nextBtn.onclick = goNext;
-    if (prevOverlay) prevOverlay.onclick = goPrev;
-    if (nextOverlay) nextOverlay.onclick = goNext;
-
-    if (scrubber) {
-      scrubber.oninput = (e) => {
-        const val = parseInt(e.target.value, 10);
-        if (viewMode === 'book') {
-          flip(val);
-        } else {
-          flipSingle(val);
-        }
-      };
-    }
-
-    if (pageInput) {
-      pageInput.onchange = (e) => {
-        let val = parseInt(e.target.value, 10);
-        if (isNaN(val) || val < 1) val = 1;
-        if (val > pages.length) val = pages.length;
-        e.target.value = val;
-        
-        if (viewMode === 'book') {
-          let targetIdx = Math.floor(val / 2);
-          flip(targetIdx);
-        } else {
-          flipSingle(val - 1);
-        }
-      };
-    }
-
-    function applyZoom() {
-      if (pageWrap) {
-        pageWrap.style.transform = `scale(${zoomScale})`;
-        pageWrap.style.transformOrigin = 'center center';
-      }
-      if (zoomVal) zoomVal.textContent = `${Math.round(zoomScale * 100)}%`;
-      
-      if (zoomScale > 1.0) {
-        viewport.style.overflow = 'auto';
-        if (pageWrap) pageWrap.classList.remove('pointer-events-none');
-      } else {
-        viewport.style.overflow = 'hidden';
-        viewport.scrollLeft = 0;
-        viewport.scrollTop = 0;
-        if (pageWrap) pageWrap.classList.add('pointer-events-none');
-      }
-    }
-
-    function resetZoom() {
-      zoomScale = 1.0;
-      applyZoom();
-    }
-
-    if (zoomIn) {
-      zoomIn.onclick = () => {
-        if (zoomScale < 2.5) {
-          zoomScale = Math.min(2.5, zoomScale + 0.25);
-          applyZoom();
-        }
-      };
-    }
-    if (zoomOut) {
-      zoomOut.onclick = () => {
-        if (zoomScale > 1.0) {
-          zoomScale = Math.max(1.0, zoomScale - 0.25);
-          applyZoom();
-        }
-      };
-    }
-    if (zoomReset) {
-      zoomReset.onclick = resetZoom;
-    }
-
-    function handleFullscreenChange() {
-      const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
-      if (card) {
-        if (isFS) {
-          card.classList.add('magazine-fullscreen-active');
-          if (fsToggle) {
-            fsToggle.innerHTML = `
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-              <span>Salir Pantalla</span>
-            `;
-          }
-        } else {
-          card.classList.remove('magazine-fullscreen-active');
-          if (fsToggle) {
-            fsToggle.innerHTML = `
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/>
-              </svg>
-              <span>Pantalla Completa</span>
-            `;
-          }
-        }
-      }
-    }
-
-    function toggleFullscreen() {
-      if (!card) return;
-      
-      const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullscreenElement);
-      if (!isFS) {
-        const req = card.requestFullscreen || card.webkitRequestFullscreen || card.mozRequestFullScreen;
-        if (req) {
-          req.call(card).catch(() => {
-            card.classList.toggle('magazine-fullscreen-active');
-          });
-        } else {
-          card.classList.toggle('magazine-fullscreen-active');
-        }
-      } else {
-        const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen;
-        if (exit) {
-          exit.call(document);
-        } else {
-          card.classList.remove('magazine-fullscreen-active');
-        }
-      }
-    }
-
-    if (fsToggle) fsToggle.onclick = toggleFullscreen;
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-
-    const handleKeyDown = (e) => {
-      if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
-      
-      const isVisible = !document.getElementById('view-magazine').classList.contains('hidden');
-      if (!isVisible) return;
-
-      if (e.key === 'ArrowLeft') {
-        goPrev();
-        e.preventDefault();
-      } else if (e.key === 'ArrowRight') {
-        goNext();
-        e.preventDefault();
-      } else if (e.key === 'f' || e.key === 'F') {
-        toggleFullscreen();
-        e.preventDefault();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-
-    let touchStartX = 0;
-    let touchStartY = 0;
-    
-    const handleTouchStart = (e) => {
-      if (zoomScale > 1.0) return;
-      touchStartX = e.touches[0].clientX;
-      touchStartY = e.touches[0].clientY;
-    };
-
-    const handleTouchEnd = (e) => {
-      if (zoomScale > 1.0) return;
-      const dx = e.changedTouches[0].clientX - touchStartX;
-      const dy = e.changedTouches[0].clientY - touchStartY;
-      if (Math.abs(dx) > 60 && Math.abs(dy) < 80) {
-        if (dx < 0) goNext();
-        else goPrev();
-      }
-    };
-
-    viewport.addEventListener('touchstart', handleTouchStart, { passive: true });
-    viewport.addEventListener('touchend', handleTouchEnd, { passive: true });
-
-    function setViewMode(mode) {
-      if (viewMode === mode) return;
-      
-      if (mode === 'book') {
-        const targetSpread = Math.floor((idx + 1) / 2);
-        viewMode = 'book';
-        idx = targetSpread;
-        
-        if (viewModeBookBtn) viewModeBookBtn.classList.add('mag-view-btn-active');
-        if (viewModeSingleBtn) viewModeSingleBtn.classList.remove('mag-view-btn-active');
-      } else {
-        const targetPage = idx === 0 ? 0 : 2 * idx - 1;
-        viewMode = 'single';
-        idx = targetPage;
-        
-        if (viewModeBookBtn) viewModeBookBtn.classList.remove('mag-view-btn-active');
-        if (viewModeSingleBtn) viewModeSingleBtn.classList.add('mag-view-btn-active');
-      }
-      
-      updateScrubberLimits();
-      update();
-    }
-
-    if (viewModeBookBtn) {
-      viewModeBookBtn.onclick = () => setViewMode('book');
-    }
-    if (viewModeSingleBtn) {
-      viewModeSingleBtn.onclick = () => setViewMode('single');
-    }
-
-    updateScrubberLimits();
-    update();
+    magazineState.pages = pages;
+    magazineState.numSpreads = Math.ceil((pages.length + 1) / 2);
   }
+
+  if (!magazineState.pages.length) {
+    img.removeAttribute('src');
+    if (totalPagesText) totalPagesText.textContent = '0';
+    if (pageInput) pageInput.value = '0';
+    return;
+  }
+
+  // Inicializar controles de UI
+  if (totalPagesText) totalPagesText.textContent = magazineState.pages.length;
+  
+  if (!window.magazineInitialized) {
+    // Determinar modo de vista inicial
+    if (window.innerWidth < 768) {
+      magazineState.viewMode = 'single';
+    } else {
+      magazineState.viewMode = 'book';
+    }
+    magazineState.idx = 0;
+    magazineState.zoomScale = 1.0;
+  }
+
+  if (magazineState.viewMode === 'single') {
+    if (viewModeBookBtn) viewModeBookBtn.classList.remove('mag-view-btn-active');
+    if (viewModeSingleBtn) viewModeSingleBtn.classList.add('mag-view-btn-active');
+  } else {
+    if (viewModeBookBtn) viewModeBookBtn.classList.add('mag-view-btn-active');
+    if (viewModeSingleBtn) viewModeSingleBtn.classList.remove('mag-view-btn-active');
+  }
+
+  if (!window.magazineInitialized) {
+    window.magazineInitialized = true;
+    setupMagazineEvents();
+  }
+
+  updateScrubberLimits();
+  update();
+}
+
+// Theme Toggle Logic
+function initThemeToggle() {
+  const toggleBtn = document.getElementById('visionThemeToggleBtn');
+  if (!toggleBtn) return;
+
+  function updateBtnUI() {
+    const isVision = document.documentElement.getAttribute('data-theme') === 'vision';
+    if (isVision) {
+      toggleBtn.innerHTML = '☀️';
+      toggleBtn.title = 'Cambiar a modo clásico (claro)';
+    } else {
+      toggleBtn.innerHTML = '🕶️';
+      toggleBtn.title = 'Cambiar a modo Vision Pro (vidrio oscuro)';
+    }
+  }
+
+  // Initial state
+  updateBtnUI();
+
+  // Click handler
+  toggleBtn.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme') || 'light';
+    const next = current === 'vision' ? 'light' : 'vision';
+    
+    if (document.startViewTransition) {
+      document.startViewTransition(() => {
+        document.documentElement.setAttribute('data-theme', next);
+        updateBtnUI();
+      });
+    } else {
+      document.documentElement.setAttribute('data-theme', next);
+      updateBtnUI();
+    }
+    localStorage.setItem('site-theme', next);
+  });
+}
+
+// Run theme initializer on DOM load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initThemeToggle);
+} else {
+  initThemeToggle();
+}
 
