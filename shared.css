@@ -1004,5 +1004,15 @@ html[data-theme="vision"] body::before, html[data-theme="vision"] body::after {
   to { opacity: 1; filter: blur(0px); }
 }
 
+/* Prevent general morphing transitions from interfering with 3D page-turning animations */
+#magazinePage, #magazinePage *,
+#magazineSingleFlip, #magazineSingleFlip *,
+#magazineLeftPage, #magazineLeftPage *,
+#magazineRightPage, #magazineRightPage *,
+#magazineFlipPage, #magazineFlipPage * {
+  transition: none !important;
+}
+
+
 
 
