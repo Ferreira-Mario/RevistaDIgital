@@ -1034,8 +1034,10 @@ header button[aria-label="Ir al inicio"] {
   font-size: 1.25rem !important; /* text-xl on mobile */
 }
 header button[aria-label="Ir al inicio"] img {
-  width: 1.75rem !important;
-  height: 1.75rem !important;
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  border-radius: 0 !important;
+  object-fit: contain !important;
 }
 header button[aria-label="Ir al inicio"] span {
   gap: 0.5rem !important;
@@ -1046,8 +1048,8 @@ header button[aria-label="Ir al inicio"] span {
     font-size: 1.5rem !important; /* text-2xl on tablet */
   }
   header button[aria-label="Ir al inicio"] img {
-    width: 2rem !important;
-    height: 2rem !important;
+    width: 2.5rem !important;
+    height: 2.5rem !important;
   }
   header button[aria-label="Ir al inicio"] span {
     gap: 0.6rem !important;
@@ -1059,8 +1061,8 @@ header button[aria-label="Ir al inicio"] span {
     font-size: 1.875rem !important; /* text-3xl on desktop */
   }
   header button[aria-label="Ir al inicio"] img {
-    width: 2rem !important;
-    height: 2rem !important;
+    width: 3rem !important;
+    height: 3rem !important;
   }
   header button[aria-label="Ir al inicio"] span {
     gap: 0.75rem !important;
