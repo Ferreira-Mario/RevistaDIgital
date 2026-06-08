@@ -299,9 +299,32 @@ html[data-theme="vision"] #magScrubber {
 }
 
 html[data-theme="vision"] #magPageInput {
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #c084fc !important;
+  padding: 0.25rem !important;
+  width: 3.5rem !important;
+}
+
+html[data-theme="vision"] .bg-gray-50 {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
   color: #ffffff !important;
+}
+
+html[data-theme="vision"] #magPrevBtn:hover,
+html[data-theme="vision"] #magNextBtn:hover,
+html[data-theme="vision"] #magZoomOut:hover,
+html[data-theme="vision"] #magZoomIn:hover,
+html[data-theme="vision"] #magZoomReset:hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="vision"] .border, 
+html[data-theme="vision"] .border-gray-100,
+html[data-theme="vision"] .border-gray-200 {
+  border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 html[data-theme="vision"] .mag-view-btn {
@@ -1011,6 +1034,44 @@ html[data-theme="vision"] body::before, html[data-theme="vision"] body::after {
 #magazineRightPage, #magazineRightPage *,
 #magazineFlipPage, #magazineFlipPage * {
   transition: none !important;
+}
+
+/* Responsive header title size override */
+header button[aria-label="Ir al inicio"] {
+  font-size: 1.25rem !important; /* text-xl on mobile */
+}
+header button[aria-label="Ir al inicio"] img {
+  width: 1.75rem !important;
+  height: 1.75rem !important;
+}
+header button[aria-label="Ir al inicio"] span {
+  gap: 0.5rem !important;
+}
+
+@media (min-width: 480px) {
+  header button[aria-label="Ir al inicio"] {
+    font-size: 1.5rem !important; /* text-2xl on tablet */
+  }
+  header button[aria-label="Ir al inicio"] img {
+    width: 2rem !important;
+    height: 2rem !important;
+  }
+  header button[aria-label="Ir al inicio"] span {
+    gap: 0.6rem !important;
+  }
+}
+
+@media (min-width: 768px) {
+  header button[aria-label="Ir al inicio"] {
+    font-size: 1.875rem !important; /* text-3xl on desktop */
+  }
+  header button[aria-label="Ir al inicio"] img {
+    width: 2rem !important;
+    height: 2rem !important;
+  }
+  header button[aria-label="Ir al inicio"] span {
+    gap: 0.75rem !important;
+  }
 }
 
 
