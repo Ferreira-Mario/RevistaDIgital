@@ -2369,10 +2369,34 @@ function initMagazineElements() {
   magazineElements.leftPage = document.getElementById('magazineLeftPage');
   magazineElements.leftImg = document.getElementById('magazineLeftImage');
   magazineElements.rightPage = document.getElementById('magazineRightPage');
-  magazineElements.rightImg = document.getElementById('magazineRightImage');
   magazineElements.magazineSpine = document.getElementById('magazineSpine');
   magazineElements.viewModeBookBtn = document.getElementById('magViewModeBook');
   magazineElements.viewModeSingleBtn = document.getElementById('magViewModeSingle');
+
+  if (!magazineState.listenersAdded) {
+    magazineState.listenersAdded = true;
+    if (magazineElements.img) {
+      magazineElements.img.addEventListener('load', () => {
+        if (magazineState.viewMode === 'single') {
+          adjustBookAspectRatio(magazineElements.img);
+        }
+      });
+    }
+    if (magazineElements.spreadRightImg) {
+      magazineElements.spreadRightImg.addEventListener('load', () => {
+        if (magazineState.viewMode === 'book') {
+          adjustBookAspectRatio(magazineElements.spreadRightImg);
+        }
+      });
+    }
+    if (magazineElements.spreadLeftImg) {
+      magazineElements.spreadLeftImg.addEventListener('load', () => {
+        if (magazineState.viewMode === 'book') {
+          adjustBookAspectRatio(magazineElements.spreadLeftImg);
+        }
+      });
+    }
+  }
 }
 
 function cancelFlip() {
@@ -2574,6 +2598,34 @@ function update() {
 
   resetZoom();
   preloadAdjacentSpreads();
+  updateBookAspectOnUpdate();
+}
+
+function adjustBookAspectRatio(image) {
+  if (!image || !image.naturalWidth || !image.naturalHeight) return;
+  const { book } = magazineElements;
+  if (!book) return;
+  const imgAspect = image.naturalWidth / image.naturalHeight;
+  if (magazineState.viewMode === 'book') {
+    book.style.aspectRatio = `${2 * imgAspect}`;
+  } else {
+    book.style.aspectRatio = `${imgAspect}`;
+  }
+}
+
+function updateBookAspectOnUpdate() {
+  const { img, spreadRightImg, spreadLeftImg } = magazineElements;
+  if (magazineState.viewMode === 'single') {
+    if (img && img.complete && img.naturalWidth > 0) {
+      adjustBookAspectRatio(img);
+    }
+  } else {
+    if (spreadRightImg && spreadRightImg.complete && spreadRightImg.naturalWidth > 0) {
+      adjustBookAspectRatio(spreadRightImg);
+    } else if (spreadLeftImg && spreadLeftImg.complete && spreadLeftImg.naturalWidth > 0) {
+      adjustBookAspectRatio(spreadLeftImg);
+    }
+  }
 }
 
 function setViewMode(mode) {
