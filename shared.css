@@ -840,6 +840,24 @@ html[data-theme="vision"] .btn-outline:hover {
   -webkit-animation: flipSinglePrev 450ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
 
+@keyframes flipSinglePagePrev {
+  0% {
+    transform: rotateY(-180deg);
+    -webkit-transform: rotateY(-180deg);
+    z-index: 30;
+  }
+  100% {
+    transform: rotateY(0deg);
+    -webkit-transform: rotateY(0deg);
+    z-index: 30;
+  }
+}
+
+.animate-single-flip-page-prev {
+  animation: flipSinglePagePrev 580ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  -webkit-animation: flipSinglePagePrev 580ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
 @keyframes shineSingle {
   0% { opacity: 0; }
   30% { opacity: 0.35; }
