@@ -667,19 +667,19 @@ html[data-theme="vision"] .btn-outline:hover {
 
 @keyframes flipPrev {
   0% {
-    transform: rotateY(-180deg);
-    -webkit-transform: rotateY(-180deg);
-    z-index: 10;
-  }
-  50% {
-    transform: rotateY(-90deg);
-    -webkit-transform: rotateY(-90deg);
-    z-index: 30;
-  }
-  100% {
     transform: rotateY(0deg);
     -webkit-transform: rotateY(0deg);
     z-index: 30;
+  }
+  50% {
+    transform: rotateY(90deg);
+    -webkit-transform: rotateY(90deg);
+    z-index: 30;
+  }
+  100% {
+    transform: rotateY(180deg);
+    -webkit-transform: rotateY(180deg);
+    z-index: 10;
   }
 }
 
