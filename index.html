@@ -22,7 +22,7 @@
     <link rel="dns-prefetch" href="//www.googleapis.com" />
     <link rel="preconnect" href="https://www.gstatic.com" />
     <link rel="dns-prefetch" href="//www.gstatic.com" />
-    <link rel="stylesheet" href="shared.css?v=1.0.10" />
+    <link rel="stylesheet" href="shared.css?v=1.0.11" />
     <link rel="stylesheet" href="home.css" />
   </head>
   <body class="bg-gray-50 text-gray-900 text-[18px]">
@@ -141,8 +141,16 @@ A través del ABP, transformamos nuestras habilidades en un proyecto real: una r
       <section id="home-carousel" class="mt-1">
         <div class="max-w-7xl mx-auto">
           <div class="w-full hero-surface border rounded-2xl shadow-sm p-6 lg:p-10">
-            <div class="flex flex-col items-center gap-3 mb-6">
-              <button id="carouselTitleButton" class="brand-title text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-center">Portadas</button>
+            <div class="flex flex-col items-center gap-4 mb-6">
+              <!-- Control Segmentado: Revista vs Avances -->
+              <div class="flex items-center bg-gray-100/80 border border-gray-200/50 rounded-2xl p-1.5 shadow-sm max-w-sm sm:max-w-md w-full mb-2" id="homeTabContainer">
+                <button id="tabRevista" type="button" class="flex-1 text-center py-2.5 px-4 sm:py-3 sm:px-6 rounded-xl font-bold text-base sm:text-lg transition-all focus:outline-none cursor-pointer">
+                  Revista
+                </button>
+                <button id="tabAvances" type="button" class="flex-1 text-center py-2.5 px-4 sm:py-3 sm:px-6 rounded-xl font-bold text-base sm:text-lg transition-all focus:outline-none cursor-pointer">
+                  Avances
+                </button>
+              </div>
               <div id="carouselFilters" class="flex flex-wrap gap-2 justify-center">
                 <button data-section="portada" class="px-5 py-2 rounded-lg btn-primary font-semibold">Portadas</button>
                 <button data-section="seccion1" class="px-5 py-2 rounded-lg btn-outline font-semibold">Sección 1</button>

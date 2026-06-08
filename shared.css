@@ -1069,6 +1069,40 @@ header button[aria-label="Ir al inicio"] span {
   }
 }
 
+/* Segmented Tabs (Revista vs Avances) */
+#homeTabContainer button {
+  color: #4b5563; /* text-gray-600 */
+}
+#homeTabContainer button:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+  color: #111827; /* text-gray-900 */
+}
+#homeTabContainer button.active-tab {
+  background-color: #ffffff !important;
+  color: #4f46e5 !important; /* indigo-600 */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Dark Mode Overrides for Segmented Tabs */
+html[data-theme="vision"] #homeTabContainer {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+html[data-theme="vision"] #homeTabContainer button {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+html[data-theme="vision"] #homeTabContainer button:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+html[data-theme="vision"] #homeTabContainer button.active-tab {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
+}
+
 
 
 

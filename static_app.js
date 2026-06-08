@@ -232,14 +232,16 @@ function route() {
   });
 
   function initHomeCarousel() {
-    const titleBtn = document.getElementById('carouselTitleButton');
+    const tabRevista = document.getElementById('tabRevista');
+    const tabAvances = document.getElementById('tabAvances');
     const filters = document.getElementById('carouselFilters');
     const viewport = document.getElementById('carouselViewport');
     const track = document.getElementById('carouselTrack');
     const prev = document.getElementById('carouselPrev');
     const next = document.getElementById('carouselNext');
     if (!track || !filters || !viewport || !prev || !next) return;
-    let currentSection = 'portada';
+    let currentSection = 'magazine';
+    let lastActiveSection = 'portada';
     let items = [];
     let idx = 0;
     let timer = null;
@@ -260,10 +262,20 @@ function route() {
 
     async function loadAndRender(sectionId) {
       currentSection = sectionId;
-      if (titleBtn) titleBtn.textContent = sectionNames[sectionId] || 'Portadas';
       const seq = ++loadSeq;
-      const raw = await getRaw(sectionId);
+      
+      let raw = [];
+      if (sectionId === 'magazine') {
+        raw = await loadMagazinePages();
+      } else {
+        raw = await getRaw(sectionId);
+      }
+
       items = raw.map((it) => {
+        if (sectionId === 'magazine') {
+          const u = resolveDriveUrl(it.id, 'w1200');
+          return { url: u, title: it.name || '', coverId: `img_${it.id}`, author: '' };
+        }
         const dId = String(it.driveId || extractDriveId(it.driveUrl || '') || '').trim();
         const key = dId || (it.file || '') || (it.title || '') || (it.author || '');
         let u = '';
@@ -272,6 +284,7 @@ function route() {
         const cid = dId ? `img_${dId}` : `img_${getTitleFromPath(String(it.file||'')).toLowerCase().replace(/\s+/g,'_')}`;
         return { url: u, title: it.title || '', coverId: cid, author: it.author || '' };
       });
+
       idx = 0;
       position = 0;
       track.innerHTML = '';
@@ -294,9 +307,16 @@ function route() {
         wrap.addEventListener('click', () => {
           const j = Number(wrap.dataset.idx || i);
           if (!Number.isFinite(j)) return;
-          if (items && items.length) openImageCarousel(items, Math.max(0, Math.min(items.length - 1, j)));
+          if (currentSection === 'magazine') {
+            magazineState.viewMode = 'single';
+            magazineState.idx = j;
+            magazineState.navigatedFromHome = true;
+            window.location.hash = '#/revista';
+          } else {
+            if (items && items.length) openImageCarousel(items, Math.max(0, Math.min(items.length - 1, j)));
+          }
         });
-        if (!r.url) {
+        if (!r.url && sectionId !== 'magazine') {
           const it = raw[i];
           Promise.resolve().then(async () => {
             const dId = String(it.driveId || extractDriveId(it.driveUrl || '') || '').trim();
@@ -370,14 +390,35 @@ function route() {
       track.style.transform = `translateX(${-position}px)`;
     }
 
+    async function switchTab(tab) {
+      if (tab === 'revista') {
+        if (tabRevista) tabRevista.classList.add('active-tab');
+        if (tabAvances) tabAvances.classList.remove('active-tab');
+        if (filters) filters.style.display = 'none';
+        await loadAndRender('magazine');
+      } else if (tab === 'avances') {
+        if (tabAvances) tabAvances.classList.add('active-tab');
+        if (tabRevista) tabRevista.classList.remove('active-tab');
+        if (filters) filters.style.display = 'flex';
+        await loadAndRender(lastActiveSection || 'portada');
+      }
+    }
+
+    if (tabRevista) {
+      tabRevista.addEventListener('click', () => switchTab('revista'));
+    }
+    if (tabAvances) {
+      tabAvances.addEventListener('click', () => switchTab('avances'));
+    }
+
     filters.addEventListener('click', (e) => {
       const b = e.target.closest('[data-section]');
       if (!b) return;
       const s = b.dataset.section || 'portada';
+      lastActiveSection = s;
       loadAndRender(s);
     });
 
-    if (titleBtn) titleBtn.addEventListener('click', () => loadAndRender('portada'));
     prev.addEventListener('click', () => {
       if (!track.children.length) return;
       position += STEP;
@@ -396,9 +437,11 @@ function route() {
       updateScroll();
     });
 
-    loadAndRender('portada').then(() => {
-      const others = ['seccion1','seccion2','seccion3','seccion4','seccion5'];
-      others.forEach((s) => { getRaw(s); });
+    // Default initial call to switchTab('revista')
+    switchTab('revista').then(() => {
+      // Prefetch advances sections in the background
+      const sections = ['portada', 'seccion1', 'seccion2', 'seccion3', 'seccion4', 'seccion5'];
+      sections.forEach((s) => { getRaw(s); });
     });
   }
 
@@ -2322,6 +2365,42 @@ const magazineState = {
   preloadedImages: new Map()
 };
 
+async function loadMagazinePages() {
+  if (magazineState.pages && magazineState.pages.length > 0) {
+    return magazineState.pages;
+  }
+  const folderId = String(window.magazineFolderId || '').trim();
+  let files = [];
+  try {
+    if (folderId) {
+      files = await listDriveFolderFiles(folderId);
+    } else {
+      const rootId = window.driveRootFolderId || '';
+      const sub = rootId ? await getDriveSubfolderId(rootId, 'Revista Digital') : '';
+      if (sub) files = await listDriveFolderFiles(sub);
+    }
+  } catch (e) {
+    console.warn('Error loading magazine files from Drive:', e);
+  }
+  files = Array.isArray(files) ? files : [];
+
+  const pages = files.map(f => ({ id: f.id, name: f.name, url: resolveDriveUrl(f.id, 'w2000') }));
+  const getNum = (name) => {
+    const m = String(name || '').match(/^(\d+)/);
+    return m ? parseInt(m[1], 10) : Infinity;
+  };
+  pages.sort((a, b) => {
+    const numA = getNum(a.name);
+    const numB = getNum(b.name);
+    if (numA !== numB) return numA - numB;
+    return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
+  });
+
+  magazineState.pages = pages;
+  magazineState.numSpreads = Math.ceil((pages.length + 1) / 2);
+  return pages;
+}
+
 const magazineElements = {
   viewport: null, book: null, pageWrap: null, img: null,
   centeredWrapper: null, spreadWrapper: null, spreadLeftImg: null, spreadRightImg: null,
@@ -3104,33 +3183,7 @@ async function renderMagazine() {
   if (!viewport || !pageWrap || !img) return;
 
   if (magazineState.pages.length === 0) {
-    // Cargar páginas
-    const folderId = String(window.magazineFolderId || '').trim();
-    let files = [];
-    if (folderId) {
-      files = await listDriveFolderFiles(folderId);
-    } else {
-      const rootId = window.driveRootFolderId || '';
-      const sub = rootId ? await getDriveSubfolderId(rootId, 'Revista Digital') : '';
-      if (sub) files = await listDriveFolderFiles(sub);
-    }
-    files = Array.isArray(files) ? files : [];
-
-    // Cargar y ordenar páginas numéricamente
-    const pages = files.map(f => ({ id: f.id, name: f.name, url: resolveDriveUrl(f.id, 'w2000') }));
-    const getNum = (name) => {
-      const m = String(name || '').match(/^(\d+)/);
-      return m ? parseInt(m[1], 10) : Infinity;
-    };
-    pages.sort((a, b) => {
-      const numA = getNum(a.name);
-      const numB = getNum(b.name);
-      if (numA !== numB) return numA - numB;
-      return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
-    });
-
-    magazineState.pages = pages;
-    magazineState.numSpreads = Math.ceil((pages.length + 1) / 2);
+    await loadMagazinePages();
   }
 
   if (!magazineState.pages.length) {
@@ -3145,12 +3198,16 @@ async function renderMagazine() {
   
   if (!window.magazineInitialized) {
     // Determinar modo de vista inicial
-    if (window.innerWidth < 768) {
-      magazineState.viewMode = 'single';
+    if (!magazineState.navigatedFromHome) {
+      if (window.innerWidth < 768) {
+        magazineState.viewMode = 'single';
+      } else {
+        magazineState.viewMode = 'book';
+      }
+      magazineState.idx = 0;
     } else {
-      magazineState.viewMode = 'book';
+      magazineState.navigatedFromHome = false;
     }
-    magazineState.idx = 0;
     magazineState.zoomScale = 1.0;
   }
 
