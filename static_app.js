@@ -3057,10 +3057,10 @@ function flipSingle(to) {
         magazineState.idx = to;
         update();
 
-        // Ocultar temporalmente el contenedor estático de fondo para que no interfiera
+        // Mantener visible el fondo estático para que ya se vea la página siguiente
         if (pageWrap) {
           pageWrap.style.transition = 'none';
-          pageWrap.style.opacity = '0';
+          pageWrap.style.opacity = '1';
         }
 
         flipPage.classList.remove('hidden');
@@ -3082,16 +3082,11 @@ function flipSingle(to) {
         flipImgBack.src = backObj ? backObj.url : '';
         flipImgBack.className = "w-full h-full object-contain pointer-events-none select-none";
 
-        // Mantener la página actual (idx) en el fondo. NO llamamos a update() todavía.
+        // Mantener la página actual (idx) en el fondo (totalmente visible) durante el giro
         if (pageWrap) {
           pageWrap.style.transition = 'none';
-          pageWrap.style.opacity = '0'; // Ocultamos fondo durante la animación para centrar en la hoja que gira
+          pageWrap.style.opacity = '1';
         }
-
-        // Cargamos el destino en el fondo pero lo mantenemos con opacidad 0.
-        magazineState.idx = to;
-        update();
-        if (pageWrap) pageWrap.style.opacity = '0';
 
         flipPage.classList.remove('hidden');
         void flipPage.offsetWidth;
@@ -3104,6 +3099,13 @@ function flipSingle(to) {
       // Limpieza al finalizar la transición (580ms de duración)
       magazineState.flipTimeout = setTimeout(() => {
         magazineState.flipTimeout = null;
+
+        // Si retrocedimos, actualizamos el fondo estático al destino al final del giro
+        if (direction === 'prev') {
+          magazineState.idx = to;
+          update();
+        }
+
         flipPage.classList.add('hidden');
         flipPage.classList.remove('animate-flip-next', 'animate-flip-prev', 'animate-single-flip-page-prev');
         
@@ -3111,7 +3113,7 @@ function flipSingle(to) {
         if (flipShineBack) flipShineBack.classList.remove('animate-shine-back');
 
         if (pageWrap) {
-          pageWrap.style.transition = 'opacity 150ms ease';
+          pageWrap.style.transition = 'none';
           pageWrap.style.opacity = '1';
         }
         magazineState.isFlipping = false;
