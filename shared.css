@@ -922,13 +922,6 @@ html[data-theme="vision"] #visionThemeToggleBtn:hover {
 /* --- Morphing Theme Transitions & View Transitions --- */
 
 /* Enable view transitions on key elements */
-header {
-  view-transition-name: main-header;
-}
-
-#visionThemeToggleBtn {
-  view-transition-name: theme-toggle-button;
-}
 
 /* Set up standard CSS transitions for browsers that don't support View Transitions 
    or to complement View Transitions for a buttery smooth experience */
