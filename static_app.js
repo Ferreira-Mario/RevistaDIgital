@@ -2369,6 +2369,7 @@ function initMagazineElements() {
   magazineElements.leftPage = document.getElementById('magazineLeftPage');
   magazineElements.leftImg = document.getElementById('magazineLeftImage');
   magazineElements.rightPage = document.getElementById('magazineRightPage');
+  magazineElements.rightImg = document.getElementById('magazineRightImage');
   magazineElements.magazineSpine = document.getElementById('magazineSpine');
   magazineElements.viewModeBookBtn = document.getElementById('magViewModeBook');
   magazineElements.viewModeSingleBtn = document.getElementById('magViewModeSingle');
